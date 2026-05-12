@@ -195,12 +195,9 @@ export async function cleanupSession(state) {
   // Stop ticker during cleanup to prevent mid-cleanup frame renders
   app.ticker.stop();
 
-  // Destroy visitor scan textures only
+  // Unload visitor scan textures via Assets (never destroy directly — crashes WebGL context)
   for (const partName of partNames) {
     const url = `/data/scans/${scanId}/textures/${partName}.png`;
-    // destroy(true) = destroy BaseTexture too, freeing GPU memory
-    PIXI.Texture.from(url).destroy(true);
-    // Evict from Assets cache — prevents stale texture on next scan
     await PIXI.Assets.unload(url);
   }
 
