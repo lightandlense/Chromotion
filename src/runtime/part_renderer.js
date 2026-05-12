@@ -23,7 +23,7 @@ let _app = null; // singleton PIXI.Application
  */
 function frameUrl(index) {
   const padded = String(index).padStart(4, '0');
-  return `src/animations/ram_lineart/frame_${padded}.png`;
+  return `/src/animations/ram_lineart/frame_${padded}.png`;
 }
 
 /**
