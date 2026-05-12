@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Color Animals — Kiosk</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #000;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Canvas container — Pixi appends its <canvas> here */
+    #canvas-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Loading / status overlay */
+    #loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      color: #fff;
+      font-family: sans-serif;
+    }
+    #loading-overlay.hidden { display: none; }
+
+    #loading-message {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    #loading-sub {
+      font-size: 1rem;
+      color: #aaa;
+    }
+
+    /* Scan controls panel — shown when idle, hidden during animation */
+    #scan-controls {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    #scan-controls.hidden { display: none; }
+
+    /* Webcam preview — small corner preview so visitor can frame themselves */
+    #webcam-preview {
+      width: 320px;
+      height: 180px;
+      object-fit: cover;
+      border: 2px solid #fff;
+      border-radius: 8px;
+      background: #111;
+    }
+
+    #scan-btn {
+      padding: 18px 56px;
+      font-size: 1.4rem;
+      font-weight: bold;
+      background: #e74c3c;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: background 0.15s;
+    }
+    #scan-btn:hover { background: #c0392b; }
+    #scan-btn:disabled { background: #555; cursor: not-allowed; }
+
+    /* Error toast */
+    #error-toast {
+      position: absolute;
+      top: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(200, 50, 50, 0.92);
+      color: #fff;
+      font-family: sans-serif;
+      font-size: 1.1rem;
+      padding: 14px 28px;
+      border-radius: 8px;
+      z-index: 200;
+      max-width: 600px;
+      text-align: center;
+    }
+    #error-toast.hidden { display: none; }
+
+    /* Hidden canvas used for JPEG capture */
+    #capture-canvas { display: none; }
+  </style>
+</head>
+<body>
+
+  <!-- Pixi.js canvas renders here -->
+  <div id="canvas-container"></div>
+
+  <!-- Loading / scanning overlay -->
+  <div id="loading-overlay">
+    <div id="loading-message">Loading...</div>
+    <div id="loading-sub"></div>
+  </div>
+
+  <!-- Scan controls: webcam preview + scan button -->
+  <div id="scan-controls" class="hidden">
+    <video id="webcam-preview" autoplay playsinline muted></video>
+    <button id="scan-btn">SCAN MY DRAWING</button>
+  </div>
+
+  <!-- Error toast -->
+  <div id="error-toast" class="hidden"></div>
+
+  <!-- Hidden canvas for JPEG capture -->
+  <canvas id="capture-canvas" width="1920" height="1080"></canvas>
+
+  <!-- Pixi.js v7 from CDN — must load before part_renderer.js module -->
+  <script src="https://cdn.jsdelivr.net/npm/pixi.js@7/dist/pixi.min.js"></script>
+
+  <script type="module">
+    import { init, cleanupSession } from './part_renderer.js';
+
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const loadingMessage = document.getElementById('loading-message');
+    const loadingSub = document.getElementById('loading-sub');
+    const scanControls = document.getElementById('scan-controls');
+    const scanBtn = document.getElementById('scan-btn');
+    const webcamVideo = document.getElementById('webcam-preview');
+    const captureCanvas = document.getElementById('capture-canvas');
+    const errorToast = document.getElementById('error-toast');
+
+    let currentState = null; // return value from init(), used by cleanupSession
+
+    // -------------------------------------------------------------------------
+    // Utility helpers
+    // -------------------------------------------------------------------------
+
+    function showLoading(message, sub = '') {
+      loadingMessage.textContent = message;
+      loadingSub.textContent = sub;
+      loadingOverlay.classList.remove('hidden');
+    }
+
+    function hideLoading() {
+      loadingOverlay.classList.add('hidden');
+    }
+
+    function showError(message) {
+      errorToast.textContent = message;
+      errorToast.classList.remove('hidden');
+      setTimeout(() => errorToast.classList.add('hidden'), 6000);
+    }
+
+    function showScanControls() {
+      scanControls.classList.remove('hidden');
+    }
+
+    function hideScanControls() {
+      scanControls.classList.add('hidden');
+    }
+
+    // -------------------------------------------------------------------------
+    // Webcam setup
+    // -------------------------------------------------------------------------
+
+    async function startWebcam() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 1920, height: 1080 },
+        });
+        webcamVideo.srcObject = stream;
+        await new Promise((resolve) => {
+          webcamVideo.onloadedmetadata = resolve;
+        });
+      } catch (err) {
+        console.warn('Webcam unavailable:', err.message);
+        // Kiosk continues without webcam — scan button will show an error
+      }
+    }
+
+    /**
+     * Capture current webcam frame as a JPEG Blob.
+     * Returns null if webcam is not available.
+     */
+    function captureFrame() {
+      return new Promise((resolve) => {
+        if (!webcamVideo.srcObject) {
+          resolve(null);
+          return;
+        }
+        const ctx = captureCanvas.getContext('2d');
+        ctx.drawImage(webcamVideo, 0, 0, 1920, 1080);
+        captureCanvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.92);
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Polling helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Poll GET /api/scan/<scan_id>/status every 500ms until status === 'ready'.
+     * Resolves with scan_id when ready.
+     */
+    function pollScanStatus(scanId) {
+      return new Promise((resolve, reject) => {
+        const interval = setInterval(async () => {
+          try {
+            const res = await fetch(`/api/scan/${scanId}/status`);
+            const data = await res.json();
+            if (data.status === 'ready') {
+              clearInterval(interval);
+              resolve(data.scan_id);
+            }
+          } catch (err) {
+            clearInterval(interval);
+            reject(err);
+          }
+        }, 500);
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Startup: determine initial scan_id to display
+    // -------------------------------------------------------------------------
+
+    async function getInitialScanId() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        if (data.current_scan_id) {
+          return data.current_scan_id;
+        }
+      } catch (_) {
+        // ignore — will use 'demo' fallback
+      }
+      return 'demo';
+    }
+
+    // -------------------------------------------------------------------------
+    // Scan flow
+    // -------------------------------------------------------------------------
+
+    async function handleScan() {
+      scanBtn.disabled = true;
+      hideScanControls();
+      showLoading('Scanning...', 'Please hold the drawing up to the camera.');
+
+      try {
+        // Capture webcam frame
+        const blob = await captureFrame();
+        if (!blob) {
+          showError('Camera not available. Please check webcam connection.');
+          showScanControls();
+          hideLoading();
+          scanBtn.disabled = false;
+          return;
+        }
+
+        // POST image to /api/scan
+        const postRes = await fetch('/api/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'image/jpeg' },
+          body: blob,
+        });
+        const postData = await postRes.json();
+
+        if (postData.status === 'error') {
+          showError(`Please try again — ${postData.message}`);
+          showScanControls();
+          hideLoading();
+          scanBtn.disabled = false;
+          return;
+        }
+
+        const scanId = postData.scan_id;
+        showLoading('Processing...', 'Applying your colors to the creature.');
+
+        // Poll until textures are ready (synchronous pipeline — should be quick)
+        const readyScanId = await pollScanStatus(scanId);
+
+        // Clean up previous session textures, then init new session
+        showLoading('Animating...', '');
+        if (currentState) {
+          await cleanupSession(currentState);
+        }
+        currentState = await init(readyScanId);
+
+        hideLoading();
+        showScanControls();
+        scanBtn.disabled = false;
+
+      } catch (err) {
+        console.error('Scan failed:', err);
+        showError('Something went wrong. Please try again.');
+        showScanControls();
+        hideLoading();
+        scanBtn.disabled = false;
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // Main startup
+    // -------------------------------------------------------------------------
+
+    async function main() {
+      showLoading('Loading...', 'Pre-loading animation frames.');
+
+      // Start webcam in parallel with renderer init (non-blocking for init)
+      const webcamPromise = startWebcam();
+
+      // Determine which scan to show initially
+      const initialScanId = await getInitialScanId();
+
+      try {
+        currentState = await init(initialScanId);
+      } catch (err) {
+        console.warn('init() failed for scanId:', initialScanId, err.message);
+        // If demo/initial scan fails (no textures yet), init with null gracefully
+        // The animation will still show line-art; parts will be invisible
+        showError('No scan found yet — press SCAN to begin!');
+      }
+
+      // Attach scan button handler
+      scanBtn.addEventListener('click', handleScan);
+
+      await webcamPromise;
+
+      hideLoading();
+      showScanControls();
+    }
+
+    main().catch((err) => {
+      console.error('Fatal startup error:', err);
+      loadingMessage.textContent = 'Startup failed';
+      loadingSub.textContent = err.message;
+    });
+  </script>
+</body>
+</html>
