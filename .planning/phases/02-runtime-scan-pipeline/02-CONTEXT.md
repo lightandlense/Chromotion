@@ -18,7 +18,7 @@ Inputs available from Phase 1: `data/motion_data.json`, `data/rest_pose_masks/*.
 
 ### scan_rectify.py
 - Detects 4 ArUco corner markers from the physical coloring sheet template
-- Computes homography to warp scan to fixed target resolution (1000x1000, matching CamScanner convention from scan-pipeline_spec)
+- Computes homography to warp scan to fixed target resolution (1920x1080, matching animation frame resolution and rest_pose_masks size — coloring sheet templates are designed at 16:9)
 - Outputs `rectified_scan.png` to a configurable output path
 - Lives in `src/preprocess/scan_rectify.py` (same module as sam2_part_tracker.py)
 - Use `opencv-contrib-python==4.10.0.84` — already pinned from Phase 1, ArUco bindings live here
@@ -46,7 +46,7 @@ Inputs available from Phase 1: `data/motion_data.json`, `data/rest_pose_masks/*.
   "crop_h": 160
 }
 ```
-One file per part: `texture_meta_<part>.json`. `crop_x/y` are top-left pixel offsets within the full 1000x1000 rectified scan, so the renderer can reconstruct sprite positions.
+One file per part: `texture_meta_<part>.json`. `crop_x/y` are top-left pixel offsets within the full 1920x1080 rectified scan, so the renderer can reconstruct sprite positions.
 
 ### Output file layout
 ```
