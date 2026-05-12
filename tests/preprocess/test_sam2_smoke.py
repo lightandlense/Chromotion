@@ -58,7 +58,7 @@ def test_orjson_numpy_support():
     import orjson
     import numpy as np
     data = {"angles": np.array([0.0, 1.5, 3.14], dtype=np.float32)}
-    result = orjson.dumps(data, option=orjson.OPT_INDENT_2)
+    result = orjson.dumps(data, option=orjson.OPT_INDENT_2 | orjson.OPT_SERIALIZE_NUMPY)
     assert b"angles" in result
     assert b"3.14" in result
 
