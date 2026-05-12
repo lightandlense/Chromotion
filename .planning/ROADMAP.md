@@ -22,7 +22,15 @@ The ram is baked offline once using SAM 2 (Phase 1), the runtime scan pipeline i
   3. `motion_data.json` is exported with 121 frames per part, numpy-unwrapped angles, auto-interpolated outliers flagged, and tracking_quality >0.8 for >90% of frames (TEST-01 passes)
   4. `rest_pose_masks/<part>.png` files exist for all ram parts, dilated exactly 15px relative to raw SAM 2 output (TEST-03 passes)
   5. Line art is exported as both a transparent WebM and a per-frame PNG sequence at animation-frame resolution
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Python env setup (conda, SAM 2 install, smoke test)
+- [ ] 01-02-PLAN.md — Frame extraction + parts_config.json authoring (manual checkpoint)
+- [ ] 01-03-PLAN.md — Line art PNG sequence export (make_lineart_video.py)
+- [ ] 01-04-PLAN.md — SAM 2 part tracker (sam2_part_tracker.py + bake run)
+- [ ] 01-05-PLAN.md — Motion review tool Tkinter UI (motion_review_tool.py)
+- [ ] 01-06-PLAN.md — pytest tests (TEST-01, TEST-02, TEST-03)
 
 ### Phase 2: Runtime Scan Pipeline
 **Goal**: A scanned coloring sheet is rectified and sliced into per-part RGBA textures in under 3 seconds, with all failure cases handled and tested
@@ -51,6 +59,6 @@ The ram is baked offline once using SAM 2 (Phase 1), the runtime scan pipeline i
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Offline Bake Pipeline | 0/TBD | Not started | - |
+| 1. Offline Bake Pipeline | 0/6 | Planned | - |
 | 2. Runtime Scan Pipeline | 0/TBD | Not started | - |
 | 3. Pixi.js Renderer and Visual Gate | 0/TBD | Not started | - |
