@@ -41,7 +41,11 @@ Plans:
   2. Scans with fewer than 4 detected ArUco markers, skewed perspective >20%, or bad lighting each produce the correct user-facing retry prompt without crashing
   3. `scan_slice.py` produces per-part RGBA textures from a synthetic known-color scan matching expected colors (TEST-05 passes), and handles all-white or all-transparent regions without error
   4. Each texture is accompanied by `texture_meta.json` with correct crop offsets for sprite positioning
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — scan_rectify.py: ArUco rectification, 3 rejection guards, TEST-04
+- [ ] 02-02-PLAN.md — scan_slice.py: RGBA slicing, texture_meta JSON, TEST-05
 
 ### Phase 3: Pixi.js Renderer and Visual Gate
 **Goal**: The ram animates with visitor scan colors 1:1 on screen, the full kiosk path runs end-to-end under 3 seconds, and Russell approves the output before any scaling decision
@@ -60,5 +64,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Offline Bake Pipeline | 0/6 | Complete    | 2026-05-12 |
-| 2. Runtime Scan Pipeline | 0/TBD | Not started | - |
+| 2. Runtime Scan Pipeline | 0/2 | Not started | - |
 | 3. Pixi.js Renderer and Visual Gate | 0/TBD | Not started | - |
