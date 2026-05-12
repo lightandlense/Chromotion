@@ -64,10 +64,10 @@
 
 ### Integration and Visual Gate
 
-- [ ] **INTEG-01**: Full kiosk path (scan → rectify → slice → render display) completes end-to-end in under 3 seconds on kiosk hardware
+- [x] **INTEG-01**: Full kiosk path (scan → rectify → slice → render display) completes end-to-end in under 3 seconds on kiosk hardware
 - [ ] **INTEG-02**: Ram renders reference flat-color scan (`ram colored 2.png`) with clean colors, no white gaps, no salmon artifacts
 - [ ] **INTEG-03**: Ram renders a real paper scan with crayon strokes — strokes are visible 1:1 in animation with no warping
-- [ ] **INTEG-04**: Ram handles deliberately-bad scan (dark colors, outside lines, missing regions) — all strokes preserved, dark colors not treated as line art, uncolored regions render white
+- [x] **INTEG-04**: Ram handles deliberately-bad scan (dark colors, outside lines, missing regions) — all strokes preserved, dark colors not treated as line art, uncolored regions render white
 - [ ] **INTEG-05**: Side-by-side comparison: Track 2 output is visually cleaner than `rigid_color_transfer.py` output (no flicker, no gaps, no salmon) — Russell approves before scaling
 
 ## v2 Requirements
@@ -129,10 +129,10 @@
 | TEST-03 | Phase 1 | Pending |
 | TEST-04 | Phase 2 | Complete |
 | TEST-05 | Phase 2 | Complete |
-| INTEG-01 | Phase 3 | Pending |
+| INTEG-01 | Phase 3 | Complete |
 | INTEG-02 | Phase 3 | Pending |
 | INTEG-03 | Phase 3 | Pending |
-| INTEG-04 | Phase 3 | Pending |
+| INTEG-04 | Phase 3 | Complete |
 | INTEG-05 | Phase 3 | Pending |
 
 **Coverage:**

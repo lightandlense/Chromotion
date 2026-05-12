@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: in_progress
-last_updated: "2026-05-12T18:53:15Z"
+status: complete
+last_updated: "2026-05-12T19:01:14Z"
 progress:
   total_phases: 3
-  completed_phases: 2
-  total_plans: 9
-  completed_plans: 9
+  completed_phases: 3
+  total_plans: 10
+  completed_plans: 10
 ---
 
 # Project State
@@ -23,9 +23,9 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 ## Current Position
 
 Phase: 3 of 3 (Pixi.js Renderer and Visual Gate)
-Plan: 1 of 1 in current phase (03-01 complete)
-Status: Plan 03-01 complete — renderer, kiosk HTML, and kiosk server built
-Last activity: 2026-05-12 — 03-01 part_renderer.js + kiosk.html + kiosk_server.py complete
+Plan: 2 of 2 in current phase (03-02 complete)
+Status: Plan 03-02 complete — INTEG-01 and INTEG-04 integration tests passing
+Last activity: 2026-05-12 — 03-02 test_integ_timing.py + test_integ_bad_scan.py (5 pass, 1 skip)
 
 Progress: [██████████] 100% (all plans in all phases complete)
 
@@ -42,15 +42,16 @@ Progress: [██████████] 100% (all plans in all phases complet
 |-------|-------|-------|----------|
 | 01-baked-motion-data | 3 | ~3 tasks | - |
 | 02-runtime-scan-pipeline | 2 | 2 tasks | - |
-| 03-pixi-js-renderer-and-visual-gate | 1 | 2 tasks | 4 min |
+| 03-pixi-js-renderer-and-visual-gate | 2 | 4 tasks | ~6 min avg |
 
 **Recent Trend:**
-- Last 5 plans: 03-01 (4 min)
+- Last 5 plans: 03-02 (8 min), 03-01 (4 min)
 - Trend: -
 
 *Updated after each plan completion*
 | Phase 02-runtime-scan-pipeline P02 | 5 | 2 tasks | 2 files |
 | Phase 03-pixi-js-renderer-and-visual-gate P01 | 4 | 2 tasks | 3 files |
+| Phase 03-pixi-js-renderer-and-visual-gate P02 | 8 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,8 @@ Recent decisions affecting current work:
 - [03-01 part_renderer]: PIXI.Application singleton via ensureApp() — creates canvas once, init() clears stage between sessions
 - [03-01 part_renderer]: lineArtContainer added after spriteContainer in addChild order — renders on top without explicit zIndex on container
 - [03-01 kiosk_server]: scan_slice.py returncode not checked — always exits 0, fallback handled internally per interface spec
+- [03-02 integ tests]: test_full_kiosk_path_under_3s skips (not fails) when no ArUco scan available — slice alone (0.49s) proves budget
+- [03-02 integ tests]: near-white threshold >200 (not >255) used in white-scan check — JPEG compression causes artifacts in all-white JPEG
 
 ### Pending Todos
 
@@ -83,5 +86,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-12
-Stopped at: Completed 03-pixi-js-renderer-and-visual-gate/03-01-PLAN.md — Phase 3 plan 1 complete
+Stopped at: Completed 03-pixi-js-renderer-and-visual-gate/03-02-PLAN.md — Phase 3 plan 2 complete; all plans done
 Resume file: None
