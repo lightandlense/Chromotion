@@ -1,0 +1,31 @@
+# Offline bake pipeline dependencies
+# Python 3.11.x required (SAM 2 constraint)
+# Install order matters — torch must be installed before sam2
+
+# Core ML
+torch==2.5.1
+torchvision==0.20.1
+# Install torch via: pip install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu121
+
+# SAM 2 — install separately from cloned repo (see setup_env.md)
+# git clone https://github.com/facebookresearch/sam2.git vendor/sam2
+# SAM2_BUILD_CUDA=0 pip install -e vendor/sam2
+
+# OpenCV — MUST be contrib, not base opencv-python (ArUco bindings)
+opencv-contrib-python==4.10.0.84
+
+# Numerical / array ops
+numpy==1.26.4
+scipy>=1.13.0
+
+# Image I/O
+Pillow>=10.0.0
+
+# Fast JSON with numpy support
+orjson>=3.9.0
+
+# Progress bars
+tqdm>=4.65.0
+
+# Testing
+pytest>=8.0.0
