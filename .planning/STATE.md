@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-05-12T14:02:36.371Z"
+last_updated: "2026-05-12T17:47:38.413Z"
 progress:
-  total_phases: 1
-  completed_phases: 1
-  total_plans: 6
-  completed_plans: 6
+  total_phases: 2
+  completed_phases: 2
+  total_plans: 8
+  completed_plans: 8
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-12)
 
 **Core value:** Visitor's actual drawing colors and stroke textures appear on the animated creature 1:1, with no hue shift, no warping artifacts, and no white gaps
-**Current focus:** Phase 1 — Offline Bake Pipeline
+**Current focus:** Phase 2 — Runtime Scan Pipeline
 
 ## Current Position
 
-Phase: 1 of 3 (Offline Bake Pipeline)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-05-12 — Roadmap created, 3 phases, 35 requirements mapped
+Phase: 2 of 3 (Runtime Scan Pipeline)
+Plan: 2 of 2 in current phase (02-02 complete — Phase 2 DONE)
+Status: Phase 2 complete
+Last activity: 2026-05-12 — 02-02 scan_slice.py complete, 4/4 tests passing (TEST-05 gate cleared)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -47,6 +47,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 02-runtime-scan-pipeline P02 | 5 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -60,6 +61,9 @@ Recent decisions affecting current work:
 - Phase 1: numpy.unwrap() applied to full angle sequence before serialization — prevents snap artifacts
 - Phase 1: Rest-pose frame is frame 0; all legs maximally separated and non-overlapping masks must be confirmed before baking
 - Phase 3: PNG sequence as default line-art path (not WebM) to avoid video clock drift
+- [Phase 02-runtime-scan-pipeline]: PIL used for RGBA PNG saves (not cv2.imwrite) — OpenCV drops alpha channel in RGBA PNG output
+- [Phase 02-runtime-scan-pipeline]: All-transparent mask produces 1x1 RGBA fallback (alpha=0) at crop_x=0,crop_y=0 — no exception raised
+- [02-01 scan_rectify]: 2px accuracy test uses colored pixel probes (not ArUco re-detection) — warp maps marker centers to image corners, leaving no quiet zone for detection in output
 
 ### Pending Todos
 
@@ -73,5 +77,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-12
-Stopped at: Roadmap written, STATE.md initialized, REQUIREMENTS.md traceability updated
+Stopped at: Completed 02-runtime-scan-pipeline/02-02-PLAN.md — Phase 2 complete
 Resume file: None

@@ -34,16 +34,16 @@
 
 ### Runtime Pipeline — Scan Rectification
 
-- [ ] **RUNTIME-01**: `scan_rectify.py` detects all 4 ArUco marker corners, computes homography, and outputs `rectified_scan.png` at a fixed target resolution
-- [ ] **RUNTIME-02**: `scan_rectify.py` rejects scans with <4 detected markers (prompt: "couldn't read corners, try again")
-- [ ] **RUNTIME-03**: `scan_rectify.py` rejects scans where perspective warp ratio >20% from rectangle (prompt user to rescan)
-- [ ] **RUNTIME-04**: `scan_rectify.py` rejects scans failing histogram check for bad lighting (too dim or overexposed)
+- [x] **RUNTIME-01**: `scan_rectify.py` detects all 4 ArUco marker corners, computes homography, and outputs `rectified_scan.png` at a fixed target resolution
+- [x] **RUNTIME-02**: `scan_rectify.py` rejects scans with <4 detected markers (prompt: "couldn't read corners, try again")
+- [x] **RUNTIME-03**: `scan_rectify.py` rejects scans where perspective warp ratio >20% from rectangle (prompt user to rescan)
+- [x] **RUNTIME-04**: `scan_rectify.py` rejects scans failing histogram check for bad lighting (too dim or overexposed)
 
 ### Runtime Pipeline — Scan Slicing
 
-- [ ] **RUNTIME-05**: `scan_slice.py` takes `rectified_scan.png` + `rest_pose_masks/` and outputs one cropped RGBA texture per part
-- [ ] **RUNTIME-06**: `scan_slice.py` accompanies each texture with `texture_meta.json` containing crop offsets (anchor for correct sprite positioning in renderer)
-- [ ] **RUNTIME-07**: `scan_slice.py` handles uncolored (all-white or all-transparent) regions without error — these render as white, not as failures
+- [x] **RUNTIME-05**: `scan_slice.py` takes `rectified_scan.png` + `rest_pose_masks/` and outputs one cropped RGBA texture per part
+- [x] **RUNTIME-06**: `scan_slice.py` accompanies each texture with `texture_meta.json` containing crop offsets (anchor for correct sprite positioning in renderer)
+- [x] **RUNTIME-07**: `scan_slice.py` handles uncolored (all-white or all-transparent) regions without error — these render as white, not as failures
 
 ### Renderer — Pixi.js v7
 
@@ -59,8 +59,8 @@
 - [ ] **TEST-01**: `test_sam2_tracking_ram.py` — all parts have 121 frames of motion data; tracking_quality >0.8 for >90% of frames
 - [ ] **TEST-02**: `test_outlier_interpolation.py` — synthetic outlier injection is auto-interpolated without affecting neighboring transforms
 - [ ] **TEST-03**: `test_rest_pose_mask_dilation.py` — each mask is dilated by exactly 15px relative to raw SAM 2 output
-- [ ] **TEST-04**: `test_aruco_rectify.py` — test scans with known perspective distortions are rectified within 2px tolerance
-- [ ] **TEST-05**: `test_scan_slice.py` — synthetic scan with known color blocks produces per-part textures matching expected colors
+- [x] **TEST-04**: `test_aruco_rectify.py` — test scans with known perspective distortions are rectified within 2px tolerance
+- [x] **TEST-05**: `test_scan_slice.py` — synthetic scan with known color blocks produces per-part textures matching expected colors
 
 ### Integration and Visual Gate
 
@@ -111,13 +111,13 @@
 | OFFLINE-06 | Phase 1 | Pending |
 | OFFLINE-07 | Phase 1 | Pending |
 | OFFLINE-08 | Phase 1 | Pending |
-| RUNTIME-01 | Phase 2 | Pending |
-| RUNTIME-02 | Phase 2 | Pending |
-| RUNTIME-03 | Phase 2 | Pending |
-| RUNTIME-04 | Phase 2 | Pending |
-| RUNTIME-05 | Phase 2 | Pending |
-| RUNTIME-06 | Phase 2 | Pending |
-| RUNTIME-07 | Phase 2 | Pending |
+| RUNTIME-01 | Phase 2 | Complete |
+| RUNTIME-02 | Phase 2 | Complete |
+| RUNTIME-03 | Phase 2 | Complete |
+| RUNTIME-04 | Phase 2 | Complete |
+| RUNTIME-05 | Phase 2 | Complete |
+| RUNTIME-06 | Phase 2 | Complete |
+| RUNTIME-07 | Phase 2 | Complete |
 | RENDER-01 | Phase 3 | Pending |
 | RENDER-02 | Phase 3 | Pending |
 | RENDER-03 | Phase 3 | Pending |
@@ -127,8 +127,8 @@
 | TEST-01 | Phase 1 | Pending |
 | TEST-02 | Phase 1 | Pending |
 | TEST-03 | Phase 1 | Pending |
-| TEST-04 | Phase 2 | Pending |
-| TEST-05 | Phase 2 | Pending |
+| TEST-04 | Phase 2 | Complete |
+| TEST-05 | Phase 2 | Complete |
 | INTEG-01 | Phase 3 | Pending |
 | INTEG-02 | Phase 3 | Pending |
 | INTEG-03 | Phase 3 | Pending |

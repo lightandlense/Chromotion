@@ -7,7 +7,7 @@ The ram is baked offline once using SAM 2 (Phase 1), the runtime scan pipeline i
 ## Phases
 
 - [x] **Phase 1: Offline Bake Pipeline** - SAM 2 tracker, review tool, line art export, and tests for the ram (completed 2026-05-12)
-- [ ] **Phase 2: Runtime Scan Pipeline** - ArUco rectification, scan slicing, and scan pipeline tests
+- [x] **Phase 2: Runtime Scan Pipeline** - ArUco rectification, scan slicing, and scan pipeline tests (completed 2026-05-12)
 - [ ] **Phase 3: Pixi.js Renderer and Visual Gate** - Sprite renderer, end-to-end integration, and Russell visual approval
 
 ## Phase Details
@@ -64,5 +64,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Offline Bake Pipeline | 0/6 | Complete    | 2026-05-12 |
-| 2. Runtime Scan Pipeline | 0/2 | Not started | - |
+| 2. Runtime Scan Pipeline | 2/2 | Complete   | 2026-05-12 |
 | 3. Pixi.js Renderer and Visual Gate | 0/TBD | Not started | - |
