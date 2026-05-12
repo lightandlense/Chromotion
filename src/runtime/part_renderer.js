@@ -103,7 +103,7 @@ export async function init(scanId) {
   await PIXI.Assets.load(lineArtUrls);
 
   // 3. Build scan texture URLs and pre-load them
-  const partNames = motionData.parts_list; // preserve order from JSON
+  const partNames = partsConfig.parts_list; // preserve order from JSON
   const textureUrls = {};
   const textureUrlArray = [];
   for (const partName of partNames) {
