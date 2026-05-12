@@ -47,12 +47,12 @@
 
 ### Renderer — Pixi.js v7
 
-- [ ] **RENDER-01**: `part_renderer.js` is a Pixi.js v7 module that pre-loads all part textures and line-art PNG frames via `PIXI.Assets.load()` before the animation ticker starts
-- [ ] **RENDER-02**: Renderer applies per-frame transforms (cx, cy, angle from motion_data) to one `PIXI.Sprite` per part, respecting z_order from `parts_config.json`
-- [ ] **RENDER-03**: Renderer composites line-art PNG frame on top of all part sprites each tick (line-art container at higher zIndex)
-- [ ] **RENDER-04**: Renderer loops the animation continuously
-- [ ] **RENDER-05**: Renderer calls `texture.destroy(true)` on all visitor textures at session end to prevent memory leak across visitor sessions
-- [ ] **RENDER-06**: Kiosk is served from localhost (not `file://`) to avoid CORS blocking texture loads
+- [x] **RENDER-01**: `part_renderer.js` is a Pixi.js v7 module that pre-loads all part textures and line-art PNG frames via `PIXI.Assets.load()` before the animation ticker starts
+- [x] **RENDER-02**: Renderer applies per-frame transforms (cx, cy, angle from motion_data) to one `PIXI.Sprite` per part, respecting z_order from `parts_config.json`
+- [x] **RENDER-03**: Renderer composites line-art PNG frame on top of all part sprites each tick (line-art container at higher zIndex)
+- [x] **RENDER-04**: Renderer loops the animation continuously
+- [x] **RENDER-05**: Renderer calls `texture.destroy(true)` on all visitor textures at session end to prevent memory leak across visitor sessions
+- [x] **RENDER-06**: Kiosk is served from localhost (not `file://`) to avoid CORS blocking texture loads
 
 ### Testing — Offline
 
@@ -118,12 +118,12 @@
 | RUNTIME-05 | Phase 2 | Complete |
 | RUNTIME-06 | Phase 2 | Complete |
 | RUNTIME-07 | Phase 2 | Complete |
-| RENDER-01 | Phase 3 | Pending |
-| RENDER-02 | Phase 3 | Pending |
-| RENDER-03 | Phase 3 | Pending |
-| RENDER-04 | Phase 3 | Pending |
-| RENDER-05 | Phase 3 | Pending |
-| RENDER-06 | Phase 3 | Pending |
+| RENDER-01 | Phase 3 | Complete |
+| RENDER-02 | Phase 3 | Complete |
+| RENDER-03 | Phase 3 | Complete |
+| RENDER-04 | Phase 3 | Complete |
+| RENDER-05 | Phase 3 | Complete |
+| RENDER-06 | Phase 3 | Complete |
 | TEST-01 | Phase 1 | Pending |
 | TEST-02 | Phase 1 | Pending |
 | TEST-03 | Phase 1 | Pending |
