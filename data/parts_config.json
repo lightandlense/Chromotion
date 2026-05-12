@@ -1,0 +1,27 @@
+{
+  "creature": "ram",
+  "source_animation": "ram animation.mp4",
+  "rest_pose_frame": 0,
+  "render_mode": "rigid",
+  "parts_list": ["body", "neck", "head_horns", "tail", "leg_FR", "leg_FL", "leg_BR", "leg_BL"],
+  "z_order": {
+    "body": 0,
+    "neck": 1,
+    "head_horns": 2,
+    "tail": 1,
+    "leg_FR": 3,
+    "leg_FL": -1,
+    "leg_BR": 3,
+    "leg_BL": -1
+  },
+  "click_prompts": {
+    "body": [[767, 540]],
+    "neck": [[1151, 506]],
+    "head_horns": [[1170, 302]],
+    "tail": [[576, 464]],
+    "leg_FR": [[1131, 788]],
+    "leg_FL": [[1053, 788]],
+    "leg_BR": [[666, 788]],
+    "leg_BL": [[526, 788]]
+  }
+}
