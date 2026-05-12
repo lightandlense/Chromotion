@@ -57,7 +57,12 @@ Plans:
   3. A deliberately bad scan (dark colors, outside-the-lines marks, missing regions) renders all strokes preserved and uncolored regions as white, not as errors (INTEG-04 passes)
   4. Full kiosk path from scan to display completes in under 3 seconds on kiosk hardware (INTEG-01 passes)
   5. Russell approves Track 2 output as visually cleaner than `rigid_color_transfer.py` output, and the scaling decision is made (INTEG-05 gate)
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — part_renderer.js + kiosk.html + kiosk_server.py (RENDER-01 to RENDER-06)
+- [ ] 03-02-PLAN.md — Integration tests: timing benchmark (INTEG-01) + bad scan resilience (INTEG-04)
+- [ ] 03-03-PLAN.md — Human visual gate: real scan + Russell approval (INTEG-02, INTEG-03, INTEG-05)
 
 ## Progress
 
@@ -65,4 +70,4 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Offline Bake Pipeline | 0/6 | Complete    | 2026-05-12 |
 | 2. Runtime Scan Pipeline | 2/2 | Complete   | 2026-05-12 |
-| 3. Pixi.js Renderer and Visual Gate | 0/TBD | Not started | - |
+| 3. Pixi.js Renderer and Visual Gate | 0/3 | Not started | - |
