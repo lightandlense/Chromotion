@@ -86,5 +86,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-12
-Stopped at: Completed 03-pixi-js-renderer-and-visual-gate/03-02-PLAN.md — Phase 3 plan 2 complete; all plans done
+Stopped at: 03-03-PLAN.md Task 1 complete — INTEG-02 kiosk path ready; paused at checkpoint:human-verify awaiting Russell's visual approval of integ02_ref textures in kiosk browser
 Resume file: None
