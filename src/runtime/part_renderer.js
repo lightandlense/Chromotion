@@ -113,7 +113,14 @@ export async function init(scanId) {
   }
   await PIXI.Assets.load(textureUrlArray);
 
-  // 4. Build sprite container with sortable z-order
+  // 4a. White background rect — required for MULTIPLY lineart blend to work correctly
+  const bg = new PIXI.Graphics();
+  bg.beginFill(0xffffff);
+  bg.drawRect(0, 0, CANVAS_W, CANVAS_H);
+  bg.endFill();
+  app.stage.addChild(bg);
+
+  // 4b. Build sprite container with sortable z-order
   const spriteContainer = new PIXI.Container();
   spriteContainer.sortableChildren = true;
 
@@ -131,10 +138,13 @@ export async function init(scanId) {
   app.stage.addChild(spriteContainer);
 
   // 5. Line-art composite layer — renders on top of all part sprites
+  // MULTIPLY blend: white lineart fill becomes transparent, black outlines stay dark.
+  // This lets colored scan textures show through while preserving the ink lines.
   const lineArtContainer = new PIXI.Container();
   const lineArtSprite = new PIXI.Sprite(PIXI.Texture.from(lineArtUrls[0]));
   lineArtSprite.width = CANVAS_W;
   lineArtSprite.height = CANVAS_H;
+  lineArtSprite.blendMode = PIXI.BLEND_MODES.MULTIPLY;
   lineArtContainer.addChild(lineArtSprite);
   app.stage.addChild(lineArtContainer); // added AFTER spriteContainer → renders on top
 
