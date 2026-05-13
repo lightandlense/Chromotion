@@ -25,16 +25,17 @@ OUT_DIR = ROOT / "data/rest_pose_masks"
 
 # Ram bounding box in 1920x1080: x=456-1488, y=64-1051
 # Seeds calibrated against actual silhouette pixel data.
-# Leg columns confirmed at x≈490, 690, 1080, 1155 (y>800 scan).
+# Seeds calibrated to match motion_data.json frame-0 cx/cy so restPos ≈ motionRest.
+# y=970 was wrong — it pushed crop centers ~74px below the lineart leg centers.
 SEEDS = {
     "body":       (820,  520),   # large central torso
     "neck":       (1080, 420),   # neck connecting body to head
     "head_horns": (1280, 230),   # upper right — head + large curved horns
     "tail":       (560,  420),   # upper left bump
-    "leg_FR":     (1155, 970),   # rightmost front leg (near camera)
-    "leg_FL":     (1080, 970),   # left of the front pair (far from camera)
-    "leg_BR":     (690,  970),   # right of the back pair (near camera)
-    "leg_BL":     (490,  970),   # leftmost back leg (far from camera)
+    "leg_FR":     (1131, 792),   # motion_data f0 cx/cy for leg_FR
+    "leg_FL":     (1054, 791),   # motion_data f0 cx/cy for leg_FL
+    "leg_BR":     (666,  792),   # motion_data f0 cx/cy for leg_BR
+    "leg_BL":     (525,  793),   # motion_data f0 cx/cy for leg_BL
 }
 
 
