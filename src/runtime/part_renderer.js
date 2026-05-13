@@ -102,7 +102,7 @@ export async function init(scanId) {
   const lineArtUrls = buildLineArtUrls();
   await PIXI.Assets.load(lineArtUrls);
 
-  // 3. Build scan texture URLs and pre-load them
+  // 3. Build scan texture URLs, pre-load textures, and load crop metadata
   const partNames = partsConfig.parts_list; // preserve order from JSON
   const textureUrls = {};
   const textureUrlArray = [];
@@ -112,6 +112,13 @@ export async function init(scanId) {
     textureUrlArray.push(url);
   }
   await PIXI.Assets.load(textureUrlArray);
+
+  // Load texture_meta JSONs to get crop positions (rest-pose canvas coordinates)
+  const cropMeta = {};
+  await Promise.all(partNames.map(async (partName) => {
+    const r = await fetch(`/data/scans/${scanId}/textures/texture_meta_${partName}.json`);
+    cropMeta[partName] = await r.json();
+  }));
 
   // 4a. White background rect — required for MULTIPLY lineart blend to work correctly
   const bg = new PIXI.Graphics();
@@ -124,6 +131,11 @@ export async function init(scanId) {
   const spriteContainer = new PIXI.Container();
   spriteContainer.sortableChildren = true;
 
+  // restPos: canvas center of the Voronoi crop region — this is where the sprite sits at rest
+  // motionRest: motion_data cx/cy at frame 0 — used to compute per-frame deltas
+  const restPos = {};
+  const motionRest = {};
+
   const sprites = {};
   for (const partName of partNames) {
     const texture = PIXI.Texture.from(textureUrls[partName]);
@@ -132,6 +144,14 @@ export async function init(scanId) {
     sprite.zIndex = partsConfig.z_order[partName] ?? 0;
     spriteContainer.addChild(sprite);
     sprites[partName] = sprite;
+
+    const meta = cropMeta[partName];
+    restPos[partName] = { x: meta.crop_x + meta.crop_w / 2, y: meta.crop_y + meta.crop_h / 2 };
+    const f0 = motionData.parts[partName]?.frames[0];
+    motionRest[partName] = f0 ? { x: f0.cx, y: f0.cy } : restPos[partName];
+
+    // Place at rest position immediately
+    sprite.position.set(restPos[partName].x, restPos[partName].y);
   }
   spriteContainer.sortChildren(); // sort once after all sprites added
 
@@ -160,16 +180,18 @@ export async function init(scanId) {
       currentFrame = (currentFrame + 1) % motionData.frame_count;
     }
 
-    // Update each part sprite position and rotation
+    // Update each part sprite position and rotation.
+    // Position = restPos + delta from frame 0 motion — keeps texture aligned to scan crop.
     for (const partName of partNames) {
       const frameData = motionData.parts[partName]?.frames[currentFrame];
       if (!frameData || frameData.tracking_quality === 0) {
-        // Skip this part this frame — hide it if quality is zero
         sprites[partName].visible = frameData ? false : true;
         continue;
       }
       sprites[partName].visible = true;
-      sprites[partName].position.set(frameData.cx, frameData.cy);
+      const dx = frameData.cx - motionRest[partName].x;
+      const dy = frameData.cy - motionRest[partName].y;
+      sprites[partName].position.set(restPos[partName].x + dx, restPos[partName].y + dy);
       sprites[partName].rotation = frameData.angle;
     }
 
