@@ -131,27 +131,36 @@ export async function init(scanId) {
   const spriteContainer = new PIXI.Container();
   spriteContainer.sortableChildren = true;
 
-  // restPos: canvas center of the Voronoi crop region — this is where the sprite sits at rest
-  // motionRest: motion_data cx/cy at frame 0 — used to compute per-frame deltas
-  const restPos = {};
+  // motionRest: motion_data cx/cy at frame 0 — used as sprite anchor and animation reference.
+  // The sprite anchor is set to the fractional position of motionRest within the crop texture,
+  // so placing the sprite at (motionRest.x, motionRest.y) puts the correct canvas pixel exactly
+  // on top of the lineart's frame-0 part center.
   const motionRest = {};
 
   const sprites = {};
   for (const partName of partNames) {
     const texture = PIXI.Texture.from(textureUrls[partName]);
     const sprite = new PIXI.Sprite(texture);
-    sprite.anchor.set(0.5, 0.5);
     sprite.zIndex = partsConfig.z_order[partName] ?? 0;
     spriteContainer.addChild(sprite);
     sprites[partName] = sprite;
 
     const meta = cropMeta[partName];
-    restPos[partName] = { x: meta.crop_x + meta.crop_w / 2, y: meta.crop_y + meta.crop_h / 2 };
     const f0 = motionData.parts[partName]?.frames[0];
-    motionRest[partName] = f0 ? { x: f0.cx, y: f0.cy } : restPos[partName];
 
-    // Place at rest position immediately
-    sprite.position.set(restPos[partName].x, restPos[partName].y);
+    if (f0 && meta.crop_w > 1 && meta.crop_h > 1) {
+      // Anchor at the motion-data frame-0 center within this texture crop
+      const anchorX = (f0.cx - meta.crop_x) / meta.crop_w;
+      const anchorY = (f0.cy - meta.crop_y) / meta.crop_h;
+      sprite.anchor.set(anchorX, anchorY);
+      motionRest[partName] = { x: f0.cx, y: f0.cy };
+    } else {
+      sprite.anchor.set(0.5, 0.5);
+      motionRest[partName] = { x: meta.crop_x + meta.crop_w / 2, y: meta.crop_y + meta.crop_h / 2 };
+    }
+
+    // Place sprite so its anchor pixel lands at the motion-data frame-0 position
+    sprite.position.set(motionRest[partName].x, motionRest[partName].y);
   }
   spriteContainer.sortChildren(); // sort once after all sprites added
 
@@ -181,7 +190,8 @@ export async function init(scanId) {
     }
 
     // Update each part sprite position and rotation.
-    // Position = restPos + delta from frame 0 motion — keeps texture aligned to scan crop.
+    // Sprite position = frameData.cx/cy because the anchor is already calibrated
+    // to the motion-data frame-0 center within the crop texture.
     for (const partName of partNames) {
       const frameData = motionData.parts[partName]?.frames[currentFrame];
       if (!frameData || frameData.tracking_quality === 0) {
@@ -189,9 +199,7 @@ export async function init(scanId) {
         continue;
       }
       sprites[partName].visible = true;
-      const dx = frameData.cx - motionRest[partName].x;
-      const dy = frameData.cy - motionRest[partName].y;
-      sprites[partName].position.set(restPos[partName].x + dx, restPos[partName].y + dy);
+      sprites[partName].position.set(frameData.cx, frameData.cy);
       sprites[partName].rotation = frameData.angle;
     }
 
