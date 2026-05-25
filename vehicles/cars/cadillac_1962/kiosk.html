@@ -50,7 +50,7 @@ const app = new PIXI.Application({
 document.body.appendChild(app.view);
 
 // ── Background ────────────────────────────────────────────────────────────────
-const bg = PIXI.Sprite.from('../animations/car/background.jpg');
+const bg = PIXI.Sprite.from('assets/background.jpg');
 bg.width = CANVAS_W;
 bg.height = CANVAS_H;
 app.stage.addChild(bg);
@@ -113,7 +113,7 @@ function spawnCar() {
 function bodyUrlFor(scanId) {
   return scanId
     ? `/data/scans/${scanId}/car2_body.png?v=${Date.now()}`
-    : `../animations/car/cadillac_no_wheels.png?v=${Date.now()}`;
+    : `assets/cadillac_no_wheels.png?v=${Date.now()}`;
 }
 
 async function loadWheelTextures(scanId) {
@@ -173,7 +173,7 @@ setInterval(async () => {
 
   const [bodyTex, wheelTex] = await Promise.all([
     PIXI.Assets.load(initialBodyUrl),
-    PIXI.Assets.load(`../animations/car/wheel.png?v=${Date.now()}`),
+    PIXI.Assets.load(`assets/wheel.png?v=${Date.now()}`),
   ]);
   currentBodyUrl = initialBodyUrl;
   currentScanId = initialScanId;

@@ -8,7 +8,7 @@ Serves the project root as static files and provides:
   GET  /api/status                    — Return current scan_id
 
 Run:
-  python ops/kiosk_server.py
+  python core/kiosk_server.py
 
 Port: 8000 (override with PORT env var)
 """
@@ -31,9 +31,9 @@ SCANS_DIR = DATA_DIR / "scans"
 MASKS_DIR = DATA_DIR / "rest_pose_masks"
 LATEST_SCAN_FILE = SCANS_DIR / "latest_scan_id.txt"
 
-SCAN_RECTIFY = PROJECT_ROOT / "src" / "preprocess" / "scan_rectify.py"
+SCAN_RECTIFY = PROJECT_ROOT / "core" / "scan_rectify.py"
 SCAN_SLICE = PROJECT_ROOT / "src" / "preprocess" / "scan_slice.py"
-MASK_CAR2_SCAN = PROJECT_ROOT / "src" / "offline" / "mask_car2_scan.py"
+MASK_CAR2_SCAN = PROJECT_ROOT / "vehicles" / "cars" / "cadillac_1962" / "mask_scan.py"
 
 SCANS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -250,7 +250,7 @@ class KioskHandler(http.server.SimpleHTTPRequestHandler):
 if __name__ == "__main__":
     print(f"Kiosk server at http://localhost:{PORT}")
     print(f"Serving project root: {PROJECT_ROOT}")
-    print(f"Open: http://localhost:{PORT}/src/runtime/kiosk.html")
+    print(f"Open: http://localhost:{PORT}/vehicles/cars/cadillac_1962/kiosk.html")
     print("Press Ctrl+C to stop.\n")
 
     server = http.server.HTTPServer(("", PORT), KioskHandler)

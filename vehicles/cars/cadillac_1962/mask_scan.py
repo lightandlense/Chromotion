@@ -1,8 +1,8 @@
 """
-mask_car2_scan.py — Generate car2 body texture + wheel sprites from a rectified scan.
+mask_scan.py — Generate car2 body texture + wheel sprites from a rectified scan.
 
 Usage:
-  python src/offline/mask_car2_scan.py --scan <rectified_scan.png> --output <out.png>
+  python vehicles/cars/cadillac_1962/mask_scan.py --scan <rectified_scan.png> --output <out.png>
 
 Outputs:
   <out.png>              — 1200x896 RGBA body (cadillac_no_wheels × scan colors)
@@ -44,9 +44,9 @@ def _car_crop(scan_w: int, scan_h: int) -> tuple[int, int, int, int]:
 WHEEL_FRONT = (234, 530, 88)
 WHEEL_REAR  = (889, 529, 87)
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-CADILLAC_PATH   = PROJECT_ROOT / "src" / "animations" / "car" / "cadillac_no_wheels.png"
-WHEEL_ASSET_PATH = PROJECT_ROOT / "src" / "animations" / "car" / "wheel.png"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+CADILLAC_PATH    = Path(__file__).parent / "assets" / "cadillac_no_wheels.png"
+WHEEL_ASSET_PATH = Path(__file__).parent / "assets" / "wheel.png"
 
 
 def _sample_wheel_color(arr: np.ndarray, cx: int, cy: int, r: int) -> str:
