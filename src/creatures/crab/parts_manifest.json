@@ -1,0 +1,52 @@
+{
+  "imageWidth": 1000,
+  "imageHeight": 807,
+  "creature": "crab",
+  "parts": {
+    "body": {
+      "z": 0,
+      "pivot": [
+        500,
+        468
+      ],
+      "parent": null,
+      "file": "parts/body.png"
+    },
+    "claw_L": {
+      "z": 2,
+      "pivot": [
+        330,
+        298
+      ],
+      "parent": "body",
+      "file": "parts/claw_L.png"
+    },
+    "claw_R": {
+      "z": 2,
+      "pivot": [
+        670,
+        298
+      ],
+      "parent": "body",
+      "file": "parts/claw_R.png"
+    },
+    "legs_L": {
+      "z": 1,
+      "pivot": [
+        290,
+        451
+      ],
+      "parent": "body",
+      "file": "parts/legs_L.png"
+    },
+    "legs_R": {
+      "z": 1,
+      "pivot": [
+        710,
+        451
+      ],
+      "parent": "body",
+      "file": "parts/legs_R.png"
+    }
+  }
+}

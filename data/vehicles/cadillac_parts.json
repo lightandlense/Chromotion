@@ -1,0 +1,13 @@
+{
+  "vehicle": "cadillac_1962_4door",
+  "source_width": 1200,
+  "source_height": 896,
+  "parts_list": ["body", "front_wheel", "rear_wheel"],
+  "orientation": "faces_left",
+  "wheel_geometry": {
+    "front_wheel": { "cx": 229, "cy": 531, "r": 82 },
+    "rear_wheel":  { "cx": 887, "cy": 531, "r": 82 }
+  },
+  "wheel_bottom_y": 613,
+  "notes": "Measured from test_scan.jpg via Hough circle detection 2026-05-23. Front is on the LEFT because car faces left."
+}

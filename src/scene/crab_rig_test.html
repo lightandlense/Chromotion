@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Crab Rig</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #06041a; overflow: hidden; width: 100vw; height: 100vh;
+       display: flex; align-items: center; justify-content: center; }
+#info { position: fixed; top: 12px; left: 12px; color: rgba(255,255,255,0.4);
+        font: 11px monospace; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="info">Crab rig — claw wave + scuttle</div>
+
+<script src="https://cdn.jsdelivr.net/npm/pixi.js@7/dist/pixi.min.js"></script>
+<script>
+(async () => {
+
+const W = 1344, H = 768;
+const app = new PIXI.Application({ width: W, height: H, backgroundAlpha: 0,
+  antialias: true, resolution: window.devicePixelRatio || 1, autoDensity: true });
+document.querySelector('#canvas-container').appendChild(app.view);
+
+function resize() {
+  const s = Math.min(window.innerWidth / W, window.innerHeight / H) * 0.95;
+  app.view.style.width = (W*s)+'px'; app.view.style.height = (H*s)+'px';
+}
+window.addEventListener('resize', resize); resize();
+
+const bg = new PIXI.Graphics();
+bg.beginFill(0x06041a); bg.drawRect(0,0,W,H); bg.endFill();
+app.stage.addChild(bg);
+const nebula = new PIXI.Graphics();
+nebula.beginFill(0x1a0a3a, 0.5);
+nebula.drawEllipse(W*.5, H*.55, W*.45, H*.30); nebula.endFill();
+app.stage.addChild(nebula);
+
+const stars = [];
+for (let i = 0; i < 220; i++) {
+  const g = new PIXI.Graphics();
+  g.beginFill(0xffffff, Math.random()*.8+.2);
+  g.drawCircle(0, 0, Math.random()*1.6+.3); g.endFill();
+  g.x = Math.random()*W; g.y = Math.random()*H;
+  g._tw = Math.random()*Math.PI*2; g._spd = .7+Math.random()*.8;
+  app.stage.addChild(g); stars.push(g);
+}
+
+const manifest = await fetch('../creatures/crab/parts_manifest.json').then(r=>r.json());
+const { imageWidth: IW, imageHeight: IH, parts } = manifest;
+
+const SCALE = (H * 0.85) / IH;
+const OX = (W - IW*SCALE) / 2, OY = (H - IH*SCALE) / 2;
+
+const cc = new PIXI.Container();
+cc.scale.set(SCALE); cc.x = OX; cc.y = OY;
+app.stage.addChild(cc);
+
+const shadow = new PIXI.Graphics();
+shadow.beginFill(0x2a1a5a, 0.35);
+shadow.drawEllipse(IW*.5, IH*.96, IW*.28, IH*.025); shadow.endFill();
+cc.addChild(shadow);
+
+const names = Object.keys(parts);
+const [lineartTex, ...partTextures] = await Promise.all([
+  PIXI.Assets.load('../creatures/crab/lineart.png'),
+  ...names.map(n => PIXI.Assets.load(`../creatures/crab/${parts[n].file}`))
+]);
+const textures = {};
+names.forEach((n,i) => textures[n] = partTextures[i]);
+
+// Animated color sprites (underneath)
+const sorted = [...names].sort((a,b) => parts[a].z - parts[b].z);
+const sprites = {};
+for (const n of sorted) {
+  const [px, py] = parts[n].pivot;
+  const s = new PIXI.Sprite(textures[n]);
+  s.pivot.set(px, py); s.position.set(px, py);
+  cc.addChild(s); sprites[n] = s;
+}
+
+// Static lineart overlay on top — never animates, outline never breaks
+const lineartSprite = new PIXI.Sprite(lineartTex);
+cc.addChild(lineartSprite);
+
+const CLAW_SWING = 0.22, CLAW_FREQ = 1.2;
+const LEG_SWING  = 0.15, LEG_FREQ  = 2.0;
+const FLOAT_AMP  = 6,    FLOAT_FREQ = 0.3;
+let t = 0, baseY = OY;
+
+app.ticker.add(delta => {
+  t += delta / 60;
+  // Claws wave — left and right opposite phase
+  if (sprites.claw_L) sprites.claw_L.rotation =  Math.sin(t * CLAW_FREQ * 2*Math.PI) * CLAW_SWING;
+  if (sprites.claw_R) sprites.claw_R.rotation = -Math.sin(t * CLAW_FREQ * 2*Math.PI) * CLAW_SWING;
+  // Legs scuttle — opposite phase
+  if (sprites.legs_L) sprites.legs_L.rotation =  Math.sin(t * LEG_FREQ * 2*Math.PI) * LEG_SWING;
+  if (sprites.legs_R) sprites.legs_R.rotation = -Math.sin(t * LEG_FREQ * 2*Math.PI) * LEG_SWING;
+  // Float
+  cc.y = baseY + Math.sin(t * FLOAT_FREQ * 2*Math.PI) * FLOAT_AMP;
+  for (const s of stars) s.alpha = .25 + .75*Math.abs(Math.sin(t*s._spd+s._tw));
+});
+
+})().catch(e => { document.querySelector('#info').textContent = 'Error: '+e.message; });
+</script>
+</body>
+</html>

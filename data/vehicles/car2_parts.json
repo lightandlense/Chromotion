@@ -1,0 +1,11 @@
+{
+  "name": "vintage-luxury-1930s",
+  "source_width": 1280,
+  "source_height": 955,
+  "faces": "left",
+  "wheel_geometry": {
+    "front_wheel": { "cx": 185, "cy": 615, "r": 108 },
+    "rear_wheel":  { "cx": 1051, "cy": 615, "r": 107 }
+  },
+  "wheel_bottom_y": 723
+}

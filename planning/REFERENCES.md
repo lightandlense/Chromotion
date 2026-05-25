@@ -23,6 +23,11 @@
 - Ticker: `app.ticker.add(delta => { ... })` for animation loop
 - Blend modes: `PIXI.BLEND_MODES.MULTIPLY` for lineart overlay
 
+## Background image road Y positions (measured 2026-05-22, canvas 1280×720)
+- Top road:    y = 141
+- Mid road:    y = 368
+- Bottom road: y = 638
+
 ## Parallax reference
 - City far layer: scrolls at 30% of car speed
 - City near layer: scrolls at 70% of car speed

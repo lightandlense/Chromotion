@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ram Rig v3 — Separate Sprites</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #06041a; overflow: hidden; width: 100vw; height: 100vh;
+       display: flex; align-items: center; justify-content: center; }
+#canvas-container { position: relative; }
+#info { position: fixed; top: 12px; left: 12px; color: rgba(255,255,255,0.4);
+        font: 11px monospace; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="info">Ram v3 — per-part sprites, pivot rotation</div>
+
+<script src="https://cdn.jsdelivr.net/npm/pixi.js@7/dist/pixi.min.js"></script>
+<script>
+(async () => {
+
+const W = 1344, H = 768;
+const app = new PIXI.Application({
+  width: W, height: H,
+  backgroundAlpha: 0,
+  antialias: true,
+  resolution: window.devicePixelRatio || 1,
+  autoDensity: true,
+});
+document.getElementById('canvas-container').appendChild(app.view);
+
+function resize() {
+  const scale = Math.min(window.innerWidth / W, window.innerHeight / H) * 0.95;
+  app.view.style.width  = (W * scale) + 'px';
+  app.view.style.height = (H * scale) + 'px';
+}
+window.addEventListener('resize', resize);
+resize();
+
+// --- Background ---
+const bg = new PIXI.Graphics();
+bg.beginFill(0x06041a);
+bg.drawRect(0, 0, W, H);
+bg.endFill();
+app.stage.addChild(bg);
+
+const nebula = new PIXI.Graphics();
+nebula.beginFill(0x1a0a3a, 0.5);
+nebula.drawEllipse(W * 0.5, H * 0.55, W * 0.45, H * 0.30);
+nebula.endFill();
+app.stage.addChild(nebula);
+
+const stars = [];
+for (let i = 0; i < 220; i++) {
+  const g = new PIXI.Graphics();
+  const r = Math.random() * 1.6 + 0.3;
+  g.beginFill(0xffffff, Math.random() * 0.8 + 0.2);
+  g.drawCircle(0, 0, r);
+  g.endFill();
+  g.x = Math.random() * W;
+  g.y = Math.random() * H;
+  g._tw = Math.random() * Math.PI * 2;
+  g._spd = 0.7 + Math.random() * 0.8;
+  app.stage.addChild(g);
+  stars.push(g);
+}
+
+// --- Load manifest ---
+const manifest = await fetch('../creatures/ram/parts_manifest.json').then(r => r.json());
+const { imageWidth: IMG_W, imageHeight: IMG_H, parts: partsData } = manifest;
+
+// Fit creature to 85% of canvas height, centered
+const SCALE    = (H * 0.85) / IMG_H;
+const OFFSET_X = (W - IMG_W * SCALE) / 2;
+const OFFSET_Y = (H - IMG_H * SCALE) / 2;
+
+// Creature container — handles scale + float
+const creatureContainer = new PIXI.Container();
+creatureContainer.scale.set(SCALE);
+creatureContainer.x = OFFSET_X;
+creatureContainer.y = OFFSET_Y;
+app.stage.addChild(creatureContainer);
+
+// Soft shadow
+const shadow = new PIXI.Graphics();
+shadow.beginFill(0x2a1a5a, 0.40);
+shadow.drawEllipse(IMG_W * 0.44, IMG_H * 0.90, IMG_W * 0.28, IMG_H * 0.03);
+shadow.endFill();
+creatureContainer.addChild(shadow);
+
+// --- Load textures ---
+const partNames = Object.keys(partsData);
+const textures = {};
+await Promise.all(partNames.map(async name => {
+  textures[name] = await PIXI.Assets.load(`../creatures/ram/${partsData[name].file}`);
+}));
+
+// Sort by z then create sprites
+// Each sprite is full image size; pivot is set to the joint point.
+// Setting position = pivot makes the sprite render at (0,0) naturally
+// while rotating around the joint.
+const sortedByZ = [...partNames].sort((a, b) => partsData[a].z - partsData[b].z);
+const sprites = {};
+
+for (const name of sortedByZ) {
+  const cfg = partsData[name];
+  const [px, py] = cfg.pivot;
+
+  const sprite = new PIXI.Sprite(textures[name]);
+  sprite.pivot.set(px, py);    // rotation anchor at joint in local coords
+  sprite.position.set(px, py); // world position = joint, so sprite renders at (0,0)
+
+  creatureContainer.addChild(sprite);
+  sprites[name] = sprite;
+}
+
+// --- Walk cycle parameters ---
+const WALK_FREQ  = 1.6;   // strides / sec
+const LEG_SWING  = 0.28;  // ± radians (~16°)
+const HEAD_NOD   = 0.06;  // ± radians
+const TAIL_SWING = 0.18;  // ± radians
+const NECK_LEAN  = 0.04;  // ± radians
+const FLOAT_AMP  = 8;     // px vertical float
+const FLOAT_FREQ = 0.35;  // Hz
+
+let elapsed = 0;
+const BASE_Y = OFFSET_Y;
+
+app.ticker.add((delta) => {
+  elapsed += delta / 60;
+  const walk = elapsed * WALK_FREQ * 2 * Math.PI;
+
+  // Diagonal pair gait: FR+BL in phase, FL+BR opposite
+  if (sprites.leg_FR) sprites.leg_FR.rotation =  Math.sin(walk)            * LEG_SWING;
+  if (sprites.leg_BL) sprites.leg_BL.rotation =  Math.sin(walk)            * LEG_SWING;
+  if (sprites.leg_FL) sprites.leg_FL.rotation =  Math.sin(walk + Math.PI)  * LEG_SWING;
+  if (sprites.leg_BR) sprites.leg_BR.rotation =  Math.sin(walk + Math.PI)  * LEG_SWING;
+
+  // Head nod (half walk frequency)
+  if (sprites.head_horns) sprites.head_horns.rotation = Math.sin(walk * 0.5) * HEAD_NOD;
+
+  // Neck slight lean
+  if (sprites.neck) sprites.neck.rotation = Math.sin(walk * 0.5 + 0.3) * NECK_LEAN;
+
+  // Tail sway (independent slower rhythm)
+  if (sprites.tail) sprites.tail.rotation = Math.sin(elapsed * 1.9) * TAIL_SWING;
+
+  // Whole-creature gentle float
+  creatureContainer.y = BASE_Y + Math.sin(elapsed * FLOAT_FREQ * 2 * Math.PI) * FLOAT_AMP;
+
+  // Star twinkle
+  for (const s of stars) {
+    s.alpha = 0.25 + 0.75 * Math.abs(Math.sin(elapsed * s._spd + s._tw));
+  }
+});
+
+})().catch(err => {
+  document.getElementById('info').textContent = 'Error: ' + err.message;
+  console.error(err);
+});
+</script>
+</body>
+</html>

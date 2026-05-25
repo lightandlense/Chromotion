@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Car Kiosk Test — Color</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    canvas { display: block; }
+    #debug {
+      position: fixed; top: 10px; left: 10px;
+      background: rgba(0,0,0,0.7); color: #fff;
+      font: 13px monospace; padding: 8px 12px; border-radius: 4px; z-index: 100;
+    }
+  </style>
+</head>
+<body>
+
+<div id="debug">
+  Road: <span id="roadLabel">mid (368)</span> &nbsp;|&nbsp;
+  Car X: <span id="carX">—</span> &nbsp;|&nbsp;
+  Keys: 1/2/3 road &nbsp; G guides &nbsp; R restart
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/pixi.js@7/dist/pixi.min.js"></script>
+<script>
+const CANVAS_W = 1280;
+const CANVAS_H = 720;
+const CAR_SPEED = 3;          // px per frame, right-to-left
+const CAR_SCALE = 0.25;       // scale applied to 1200x896 source images
+
+// Wheel geometry in source image coordinates (from cadillac_parts.json)
+// Car faces LEFT: front wheel is on the LEFT (cx=229), rear on the RIGHT (cx=887)
+const WHEEL_FRONT = { cx: 229, cy: 531, r: 82 };
+const WHEEL_REAR  = { cx: 887, cy: 531, r: 82 };
+
+// Bottom of wheel in source image = cy + r (used to align car to road)
+const WHEEL_BOTTOM_SRC = WHEEL_FRONT.cy + WHEEL_FRONT.r;  // 613
+const CAR_SRC_W = 1200;
+
+const app = new PIXI.Application({
+  width: CANVAS_W,
+  height: CANVAS_H,
+  backgroundColor: 0x87ceeb,
+  resolution: window.devicePixelRatio || 1,
+  autoDensity: true,
+});
+document.body.appendChild(app.view);
+
+// ── Background ──────────────────────────────────────────────────────────────
+const bg = PIXI.Sprite.from('../animations/car/background.jpg');
+bg.width = CANVAS_W;
+bg.height = CANVAS_H;
+app.stage.addChild(bg);
+
+// ── Road Y guides (toggle with G) ───────────────────────────────────────────
+const ROADS = [
+  { name: 'top',    y: 141 },
+  { name: 'mid',    y: 368 },
+  { name: 'bottom', y: 638 },
+];
+let ACTIVE_ROAD = { ...ROADS[1] };
+
+const guideLayer = new PIXI.Graphics();
+app.stage.addChild(guideLayer);
+let guidesVisible = true;
+
+function drawGuides() {
+  guideLayer.clear();
+  if (!guidesVisible) return;
+  ROADS.forEach(r => {
+    guideLayer.lineStyle(1, 0xff0000, 0.6);
+    guideLayer.moveTo(0, r.y);
+    guideLayer.lineTo(CANVAS_W, r.y);
+  });
+}
+drawGuides();
+
+// ── Car group ───────────────────────────────────────────────────────────────
+// Source sprites face LEFT (rear fins on right side of image). Car moves right-to-left so front leads.
+const carGroup = new PIXI.Container();
+app.stage.addChild(carGroup);
+
+let rearWheelSprite = null;
+let frontWheelSprite = null;
+let initialized = false;
+let baseY = 0;
+let t = 0;
+
+// Computed screen-space values (set after sprites load)
+const carRenderedW = CAR_SRC_W * CAR_SCALE;                  // 600px
+const wheelRadius  = WHEEL_FRONT.r * CAR_SCALE;               // 41px
+const dAngle       = CAR_SPEED / (2 * Math.PI * wheelRadius); // radians per frame
+
+function setRoadY(road) {
+  ACTIVE_ROAD = { ...road };
+  baseY = road.y - Math.round(WHEEL_BOTTOM_SRC * CAR_SCALE);
+  carGroup.y = baseY;
+  document.getElementById('roadLabel').textContent = `${road.name} (${road.y})`;
+}
+
+function spawnCar() {
+  // Source sprites face LEFT — car enters from the right edge and drives right-to-left.
+  carGroup.x = CANVAS_W + carRenderedW;
+  document.getElementById('carX').textContent = Math.round(carGroup.x);
+}
+
+// ── Load textures ────────────────────────────────────────────────────────────
+(async () => {
+  const v = Date.now();
+  const [outlineTex, coloredBodyTex, rearWheelTex, frontWheelTex] = await Promise.all([
+    PIXI.Assets.load(`../animations/car/cadillac_outline_only.png?v=${v}`),
+    PIXI.Assets.load(`../animations/car/colored/body.png?v=${v}`),
+    PIXI.Assets.load(`../animations/car/colored/rear_wheel.png?v=${v}`),
+    PIXI.Assets.load(`../animations/car/colored/front_wheel.png?v=${v}`),
+  ]);
+
+  // colored wheel sprites are 164px = 2r, anchor(0.5,0.5) centers on the axle
+  const wheelScale = (WHEEL_FRONT.r * 2 * CAR_SCALE) / rearWheelTex.width;
+
+  // Layer 1 & 2: spinning colored wheels — BEHIND the body.
+  // Body has transparent wheel holes so these show through.
+  rearWheelSprite = new PIXI.Sprite(rearWheelTex);
+  rearWheelSprite.anchor.set(0.5, 0.5);
+  rearWheelSprite.scale.set(wheelScale);
+  rearWheelSprite.x = WHEEL_REAR.cx  * CAR_SCALE;
+  rearWheelSprite.y = WHEEL_REAR.cy  * CAR_SCALE;
+  carGroup.addChild(rearWheelSprite);
+
+  frontWheelSprite = new PIXI.Sprite(frontWheelTex);
+  frontWheelSprite.anchor.set(0.5, 0.5);
+  frontWheelSprite.scale.set(wheelScale);
+  frontWheelSprite.x = WHEEL_FRONT.cx * CAR_SCALE;
+  frontWheelSprite.y = WHEEL_FRONT.cy * CAR_SCALE;
+  carGroup.addChild(frontWheelSprite);
+
+  // Layer 3: kid's colored body (opaque, transparent at wheel holes so wheels show through)
+  const coloredBodySprite = new PIXI.Sprite(coloredBodyTex);
+  coloredBodySprite.scale.set(CAR_SCALE);
+  carGroup.addChild(coloredBodySprite);
+
+  // Layer 4: dark outline only (white fill stripped out) — sits on top for crisp lines
+  const outlineSprite = new PIXI.Sprite(outlineTex);
+  outlineSprite.scale.set(CAR_SCALE);
+  carGroup.addChild(outlineSprite);
+
+  setRoadY(ACTIVE_ROAD);
+  spawnCar();
+  initialized = true;
+})();
+
+// ── Animation loop ───────────────────────────────────────────────────────────
+app.ticker.add(() => {
+  if (!initialized) return;
+  t += 1;
+
+  // Move right-to-left
+  carGroup.x -= CAR_SPEED;
+  // Body bounce: 3px amplitude, ~0.6Hz at 60fps
+  carGroup.y = baseY + Math.sin(t * 0.06) * 1;
+  document.getElementById('carX').textContent = Math.round(carGroup.x);
+
+  // Spin wheels counter-clockwise (correct for left-traveling car)
+  rearWheelSprite.rotation  -= dAngle;
+  frontWheelSprite.rotation -= dAngle;
+
+  // Wrap: fully off-screen left → reenter from right
+  if (carGroup.x < -carRenderedW) {
+    carGroup.x = CANVAS_W + carRenderedW;
+  }
+});
+
+// ── Keyboard controls ────────────────────────────────────────────────────────
+window.addEventListener('keydown', e => {
+  if (e.key === 'g' || e.key === 'G') {
+    guidesVisible = !guidesVisible;
+    drawGuides();
+  }
+  if (e.key === 'r' || e.key === 'R') {
+    if (initialized) spawnCar();
+  }
+  if (['1', '2', '3'].includes(e.key)) {
+    setRoadY(ROADS[parseInt(e.key) - 1]);
+    if (initialized) spawnCar();
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Color Animals — Scene Test</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; min-height: 100vh; font-family: system-ui, sans-serif;
+    background: radial-gradient(circle at 20% 20%, #1b1b3a 0%, #050513 60%);
+    color: #eee;
+  }
+  header {
+    display: flex; gap: 18px; align-items: center; flex-wrap: wrap;
+    padding: 14px 22px; background: rgba(0,0,0,0.25); border-bottom: 1px solid #222;
+  }
+  header strong { font-size: 15px; letter-spacing: 0.4px; }
+  label { font-size: 13px; opacity: 0.85; display: inline-flex; gap: 6px; align-items: center; }
+  input[type=color] { width: 40px; height: 32px; border: 0; background: none; cursor: pointer; }
+  #presets { display: flex; gap: 6px; }
+  .swatch {
+    width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+    border: 2px solid #444; transition: transform 0.1s, border-color 0.1s;
+  }
+  .swatch:hover { transform: scale(1.08); }
+  .swatch.active { border-color: #fff; }
+  main {
+    display: grid; place-items: center; padding: 28px;
+  }
+  #stage {
+    width: min(95vw, 1280px); height: auto; aspect-ratio: 16 / 9;
+    background: radial-gradient(circle at 30% 35%, #20204a 0%, #06061a 70%);
+    border-radius: 12px; box-shadow: 0 30px 80px -20px rgba(0,0,0,0.6);
+  }
+  video { display: none; }
+  .status { margin-left: auto; font-size: 12px; opacity: 0.6; }
+</style>
+</head>
+<body>
+<header>
+  <strong>Color Animals — scene test</strong>
+  <label>Visitor color
+    <input id="picker" type="color" value="#d8842f">
+  </label>
+  <div id="presets">
+    <div class="swatch active" style="background:#d8842f" data-color="#d8842f" title="orange"></div>
+    <div class="swatch" style="background:#6bafd5" data-color="#6bafd5" title="sky"></div>
+    <div class="swatch" style="background:#9bc965" data-color="#9bc965" title="moss"></div>
+    <div class="swatch" style="background:#c66393" data-color="#c66393" title="pink"></div>
+    <div class="swatch" style="background:#f0d878" data-color="#f0d878" title="gold"></div>
+  </div>
+  <span class="status" id="status">loading...</span>
+</header>
+<main>
+  <video id="src" autoplay loop muted playsinline crossorigin="anonymous">
+    <source src="../animations/ram_animation_alpha.webm" type="video/webm">
+  </video>
+  <canvas id="stage" width="1280" height="720"></canvas>
+</main>
+<script src="scene.js"></script>
+</body>
+</html>

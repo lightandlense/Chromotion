@@ -33,6 +33,12 @@ import time
 import warnings
 from typing import Optional
 
+# SAM2 repo root must be on sys.path for Hydra to resolve sam2_configs package.
+# Works whether you run from project root or any subdirectory.
+_SAM2_REPO = pathlib.Path(__file__).resolve().parents[2] / "vendor" / "sam2_repo"
+if _SAM2_REPO.exists() and str(_SAM2_REPO) not in sys.path:
+    sys.path.insert(0, str(_SAM2_REPO))
+
 import numpy as np
 import orjson
 import torch
@@ -254,16 +260,24 @@ def track_all_parts(
             offload_state_to_cpu=True,   # trade ~22% speed for lower VRAM
         )
 
-        # Add click prompts
-        prompts = click_prompts[part_name]  # [[x, y], ...]
-        for pt in prompts:
-            predictor.add_new_points_or_box(
-                inference_state=inference_state,
-                frame_idx=rest_pose_frame,
-                obj_id=0,
-                points=np.array([pt], dtype=np.float32),
-                labels=np.array([1], dtype=np.int32),  # 1 = foreground
-            )
+        # Add click prompts — supports legacy list format or {"positive":[], "negative":[]}
+        prompts = click_prompts[part_name]
+        if isinstance(prompts, list):
+            pts = np.array(prompts, dtype=np.float32)
+            labels = np.ones(len(prompts), dtype=np.int32)
+        else:
+            pos = prompts.get("positive", [])
+            neg = prompts.get("negative", [])
+            pts = np.array(pos + neg, dtype=np.float32)
+            labels = np.array([1] * len(pos) + [0] * len(neg), dtype=np.int32)
+
+        predictor.add_new_points_or_box(
+            inference_state=inference_state,
+            frame_idx=rest_pose_frame,
+            obj_id=0,
+            points=pts,
+            labels=labels,
+        )
 
         # Collect raw frame data
         raw_frames = {}  # {frame_idx: binary_mask}

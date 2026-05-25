@@ -145,9 +145,14 @@ def test_rectify_2px_tolerance(tmp_path):
         int(mid): c[0].mean(axis=0)
         for c, mid in zip(corners_in, ids_in.flatten())
     }
+    # outer_map mirrors production: marker_id → outer page corner of that marker
+    outer_map = {
+        int(mid): c[0][int(mid)]
+        for c, mid in zip(corners_in, ids_in.flatten())
+    }
     assert set(id_map.keys()) == {0, 1, 2, 3}
 
-    # Reference dot positions in input space (x=col, y=row), placed inward
+    # Reference dot positions in input space (x=col, y=row), placed inward from centers
     ref_offsets = {
         0: (+OFFSET, +OFFSET),   # TL marker: move right+down
         1: (-OFFSET, +OFFSET),   # TR marker: move left+down
@@ -170,8 +175,8 @@ def test_rectify_2px_tolerance(tmp_path):
         r, c = int(round(ry)), int(round(rx))
         canvas[r - 2:r + 3, c - 2:c + 3] = ref_colors_bgr[mid]
 
-    # Compute expected output positions via the homography
-    src_pts = np.float32([id_map[0], id_map[1], id_map[2], id_map[3]])
+    # Compute expected output positions using outer corners — matches production
+    src_pts = np.float32([outer_map[0], outer_map[1], outer_map[2], outer_map[3]])
     dst_pts = np.float32([
         [0, 0],
         [TARGET_W - 1, 0],

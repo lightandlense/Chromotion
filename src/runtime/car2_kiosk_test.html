@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Car2 Kiosk Test — Vintage Luxury</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    canvas { display: block; }
+    #debug {
+      position: fixed; top: 10px; left: 10px;
+      background: rgba(0,0,0,0.7); color: #fff;
+      font: 13px monospace; padding: 8px 12px; border-radius: 4px; z-index: 100;
+    }
+  </style>
+</head>
+<body>
+
+<div id="debug">
+  Road: <span id="roadLabel">mid (368)</span> &nbsp;|&nbsp;
+  Scan: <span id="scanLabel">checking...</span> &nbsp;|&nbsp;
+  Car X: <span id="carX">—</span><br>
+  Hub: <span id="wheelSel">FRONT</span>
+  &nbsp; ox:<span id="hubOx">16</span>
+  &nbsp; oy:<span id="hubOy">-2</span><br>
+  F/B=select &nbsp; Arrows=nudge hub &nbsp; 1/2/3=road &nbsp; G=guides &nbsp; R=restart
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/pixi.js@7/dist/pixi.min.js"></script>
+<script>
+const CANVAS_W = 1280;
+const CANVAS_H = 720;
+const CAR_SPEED = 3;
+const CAR_SCALE = 0.25;
+
+// Wheel geometry — cadillac_no_wheels.png 1200x896, faces LEFT, front on left
+// cx/cy must match the stencil hole centroids in cadillac_full_stencil.png
+const WHEEL_FRONT = { cx: 234, cy: 530, r: 88 };
+const WHEEL_REAR  = { cx: 889, cy: 529, r: 87 };
+const WHEEL_BOTTOM_SRC = WHEEL_FRONT.cy + WHEEL_FRONT.r;  // 618
+const CAR_SRC_W = 1200;
+
+const app = new PIXI.Application({
+  width: CANVAS_W,
+  height: CANVAS_H,
+  backgroundColor: 0x87ceeb,
+  resolution: window.devicePixelRatio || 1,
+  autoDensity: true,
+});
+document.body.appendChild(app.view);
+
+// ── Background ────────────────────────────────────────────────────────────────
+const bg = PIXI.Sprite.from('../animations/car/background.jpg');
+bg.width = CANVAS_W;
+bg.height = CANVAS_H;
+app.stage.addChild(bg);
+
+// ── Road Y guides ─────────────────────────────────────────────────────────────
+const ROADS = [
+  { name: 'top',    y: 141 },
+  { name: 'mid',    y: 368 },
+  { name: 'bottom', y: 638 },
+];
+let ACTIVE_ROAD = { ...ROADS[1] };
+
+const guideLayer = new PIXI.Graphics();
+app.stage.addChild(guideLayer);
+let guidesVisible = true;
+
+function drawGuides() {
+  guideLayer.clear();
+  if (!guidesVisible) return;
+  ROADS.forEach(r => {
+    guideLayer.lineStyle(1, 0xff0000, 0.6);
+    guideLayer.moveTo(0, r.y);
+    guideLayer.lineTo(CANVAS_W, r.y);
+  });
+}
+drawGuides();
+
+// ── Car group ─────────────────────────────────────────────────────────────────
+const carGroup = new PIXI.Container();
+app.stage.addChild(carGroup);
+
+let rearWheelContainer  = null;
+let frontWheelContainer = null;
+let rearColorSprite  = null;
+let frontColorSprite = null;
+let bodySprite       = null;
+let initialized = false;
+let baseY = 0;
+let t = 0;
+let currentScanId    = null;
+let currentBodyUrl   = null;
+
+const carRenderedW = CAR_SRC_W * CAR_SCALE;
+const wheelRadius  = WHEEL_FRONT.r * CAR_SCALE;
+const dAngle       = CAR_SPEED / (2 * Math.PI * wheelRadius);
+
+function setRoadY(road) {
+  ACTIVE_ROAD = { ...road };
+  baseY = road.y - Math.round(WHEEL_BOTTOM_SRC * CAR_SCALE);
+  carGroup.y = baseY;
+  document.getElementById('roadLabel').textContent = `${road.name} (${road.y})`;
+}
+
+function spawnCar() {
+  carGroup.x = CANVAS_W + carRenderedW;
+  document.getElementById('carX').textContent = Math.round(carGroup.x);
+}
+
+// ── Scan polling ──────────────────────────────────────────────────────────────
+function bodyUrlFor(scanId) {
+  return scanId
+    ? `/data/scans/${scanId}/car2_body.png?v=${Date.now()}`
+    : `../animations/car/cadillac_no_wheels.png?v=${Date.now()}`;
+}
+
+async function loadWheelTextures(scanId) {
+  if (!scanId) return;
+  try {
+    const fTex = await PIXI.Assets.load(`/data/scans/${scanId}/front_wheel_colors.png?v=${Date.now()}`);
+    const rTex = await PIXI.Assets.load(`/data/scans/${scanId}/rear_wheel_colors.png?v=${Date.now()}`);
+    if (frontColorSprite) {
+      frontColorSprite.texture = fTex;
+      frontColorSprite.scale.set((WHEEL_FRONT.r * 2 * CAR_SCALE) / fTex.width);
+    }
+    if (rearColorSprite) {
+      rearColorSprite.texture = rTex;
+      rearColorSprite.scale.set((WHEEL_REAR.r * 2 * CAR_SCALE) / rTex.width);
+    }
+  } catch (_) {}
+}
+
+async function swapBodyTexture(scanId) {
+  const url = bodyUrlFor(scanId);
+  if (currentBodyUrl) {
+    try { PIXI.Assets.unload(currentBodyUrl); } catch (_) {}
+  }
+  const tex = await PIXI.Assets.load(url);
+  if (bodySprite) {
+    bodySprite.texture = tex;
+  }
+  currentBodyUrl = url;
+  currentScanId = scanId;
+  document.getElementById('scanLabel').textContent = scanId || 'static';
+  await loadWheelTextures(scanId);
+  applyHubCfg();  // re-apply hub offsets after texture swap
+}
+
+async function getLatestScanId() {
+  try {
+    const res = await fetch('/api/status');
+    const data = await res.json();
+    return data.current_scan_id || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+// Poll every 3 seconds; swap body texture when a new scan arrives
+setInterval(async () => {
+  const id = await getLatestScanId();
+  if (id && id !== currentScanId) {
+    await swapBodyTexture(id);
+  }
+}, 3000);
+
+// ── Load textures ─────────────────────────────────────────────────────────────
+(async () => {
+  const initialScanId = await getLatestScanId();
+  const initialBodyUrl = bodyUrlFor(initialScanId);
+
+  const [bodyTex, wheelTex] = await Promise.all([
+    PIXI.Assets.load(initialBodyUrl),
+    PIXI.Assets.load(`../animations/car/wheel.png?v=${Date.now()}`),
+  ]);
+  currentBodyUrl = initialBodyUrl;
+  currentScanId = initialScanId;
+  document.getElementById('scanLabel').textContent = initialScanId || 'static';
+
+  // Load initial color textures if a scan is available
+  let fColorTex = null, rColorTex = null;
+  if (initialScanId) {
+    try {
+      [fColorTex, rColorTex] = await Promise.all([
+        PIXI.Assets.load(`/data/scans/${initialScanId}/front_wheel_colors.png?v=${Date.now()}`),
+        PIXI.Assets.load(`/data/scans/${initialScanId}/rear_wheel_colors.png?v=${Date.now()}`),
+      ]);
+    } catch (_) {}
+  }
+
+  // Build a wheel container: wheel.png base (fixed) + color overlay (offset-able)
+  // Both spin together as the container rotates. Only the color layer shifts on hub nudge.
+  function makeWheelContainer(whl, colorTex) {
+    const container = new PIXI.Container();
+    container.x = whl.cx * CAR_SCALE;
+    container.y = whl.cy * CAR_SCALE;
+
+    const baseScale = (whl.r * 2 * CAR_SCALE) / wheelTex.width;
+    const base = new PIXI.Sprite(wheelTex);
+    base.anchor.set(0.5, 0.5);
+    base.scale.set(baseScale);
+    container.addChild(base);
+
+    const colorScale = colorTex ? (whl.r * 2 * CAR_SCALE) / colorTex.width : 1;
+    const colorSpr = new PIXI.Sprite(colorTex || PIXI.Texture.EMPTY);
+    colorSpr.anchor.set(0.5, 0.5);
+    colorSpr.scale.set(colorScale);
+    container.addChild(colorSpr);
+
+    return { container, colorSpr };
+  }
+
+  // Layers 1 & 2: spinning wheel containers — behind body
+  const rear  = makeWheelContainer(WHEEL_REAR,  rColorTex);
+  rearWheelContainer = rear.container;
+  rearColorSprite    = rear.colorSpr;
+  carGroup.addChild(rearWheelContainer);
+
+  const front = makeWheelContainer(WHEEL_FRONT, fColorTex);
+  frontWheelContainer = front.container;
+  frontColorSprite    = front.colorSpr;
+  carGroup.addChild(frontWheelContainer);
+
+  // Layer 3: car body — scan texture or static cadillac fallback
+  bodySprite = new PIXI.Sprite(bodyTex);
+  bodySprite.scale.set(CAR_SCALE);
+  carGroup.addChild(bodySprite);
+
+  setRoadY(ACTIVE_ROAD);
+  spawnCar();
+  applyHubCfg();  // apply saved hub offsets immediately on load
+  initialized = true;
+})();
+
+// ── Animation loop ────────────────────────────────────────────────────────────
+app.ticker.add(() => {
+  if (!initialized) return;
+  t += 1;
+
+  carGroup.x -= CAR_SPEED;
+  carGroup.y = baseY + Math.sin(t * 0.06) * 1;
+  document.getElementById('carX').textContent = Math.round(carGroup.x);
+
+  rearWheelContainer.rotation  -= dAngle;
+  frontWheelContainer.rotation -= dAngle;
+
+  if (carGroup.x < -carRenderedW) {
+    carGroup.x = CANVAS_W + carRenderedW;
+  }
+});
+
+// ── Hubcap offset editor ──────────────────────────────────────────────────────
+// Nudges each wheel sprite position so the colored hubcap aligns with wheel.png
+const hubCfg = {
+  front: { ox: 16, oy: -2 },
+  rear:  { ox: -12, oy: 0 },
+};
+let selectedWheel = 'front';
+
+function applyHubCfg() {
+  const hf = hubCfg.front, hb = hubCfg.rear;
+  // Move only the color overlay within each container — wheel.png base stays fixed
+  if (frontColorSprite) {
+    frontColorSprite.x = hf.ox * CAR_SCALE;
+    frontColorSprite.y = hf.oy * CAR_SCALE;
+  }
+  if (rearColorSprite) {
+    rearColorSprite.x = hb.ox * CAR_SCALE;
+    rearColorSprite.y = hb.oy * CAR_SCALE;
+  }
+  const hub = hubCfg[selectedWheel];
+  document.getElementById('wheelSel').textContent = selectedWheel.toUpperCase();
+  document.getElementById('hubOx').textContent = hub.ox;
+  document.getElementById('hubOy').textContent = hub.oy;
+  console.log(`hub_front=(${hf.ox},${hf.oy})  hub_rear=(${hb.ox},${hb.oy})`);
+}
+
+// ── Keyboard controls ─────────────────────────────────────────────────────────
+window.addEventListener('keydown', e => {
+  const wk = e.shiftKey ? 10 : 1;
+
+  if (e.key === 'f' || e.key === 'F') { selectedWheel = 'front'; applyHubCfg(); return; }
+  if (e.key === 'b' || e.key === 'B') { selectedWheel = 'rear';  applyHubCfg(); return; }
+
+  const hub = hubCfg[selectedWheel];
+  if (e.key === 'ArrowLeft')  { e.preventDefault(); hub.ox -= wk; applyHubCfg(); return; }
+  if (e.key === 'ArrowRight') { e.preventDefault(); hub.ox += wk; applyHubCfg(); return; }
+  if (e.key === 'ArrowUp')    { e.preventDefault(); hub.oy -= wk; applyHubCfg(); return; }
+  if (e.key === 'ArrowDown')  { e.preventDefault(); hub.oy += wk; applyHubCfg(); return; }
+
+  if (e.key === 'g' || e.key === 'G') { guidesVisible = !guidesVisible; drawGuides(); }
+  if (e.key === 'r' || e.key === 'R') { if (initialized) spawnCar(); }
+  if (['1', '2', '3'].includes(e.key)) {
+    setRoadY(ROADS[parseInt(e.key) - 1]);
+    if (initialized) spawnCar();
+  }
+});
+</script>
+</body>
+</html>

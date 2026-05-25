@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Car Kiosk — Video Test</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    canvas { display: block; }
+    #debug {
+      position: fixed; top: 10px; left: 10px;
+      background: rgba(0,0,0,0.7); color: #fff;
+      font: 13px monospace; padding: 8px 12px; border-radius: 4px; z-index: 100;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+<div id="debug">
+  Road: <span id="roadLabel">mid (368)</span> &nbsp;|&nbsp; Car X: <span id="carX">—</span><br>
+  Car Y-off: <span id="yOff">0</span><br>
+  Front wheel: dx=<span id="rdx">0</span>  dy=<span id="rdy">0</span>  &nbsp; (Arrow keys)<br>
+  Rear wheel:  dx=<span id="fdx">0</span>  dy=<span id="fdy">0</span>  &nbsp; (IJKL)<br>
+  Keys: 1/2/3 road &nbsp; R restart &nbsp; +/- car Y
+</div>
+
+<canvas id="c" width="1280" height="720"></canvas>
+
+<img id="car"       src="car_move_colored.apng"           style="display:none">
+<img id="bg"        src="../animations/car/background.jpg" style="display:none">
+<img id="wheelRear" src="_wheel_rear.png"                  style="display:none">
+<img id="wheelFront" src="_wheel_front.png"                style="display:none">
+
+<script>
+const CANVAS_W = 1280, CANVAS_H = 720;
+const CAR_SCALE = 0.5;
+const CAR_SPEED = 3;
+
+const CAR_BOTTOM_IN_WEBM = 490;
+const CAR_BOTTOM_SCALED  = Math.round(CAR_BOTTOM_IN_WEBM * CAR_SCALE);
+const DRAW_W = Math.round(1280 * CAR_SCALE);
+const DRAW_H = Math.round(720  * CAR_SCALE);
+
+// Base wheel positions (APNG 1280x720 space)
+// canvas_x = carCX + DRAW_W/2 - apng_cx * CAR_SCALE  (because of flip)
+// canvas_y = drawY + apng_cy * CAR_SCALE
+const WHEEL_R_CANVAS  = 45;  // lineart r=85 * scale 1280/1200 * CAR_SCALE 0.5 ≈ 45
+// Base positions in APNG space. dx offsets confirmed by Russell (2026-05-23).
+const BASE_REAR_APNG  = { x: 290, y: 435 };
+const BASE_FRONT_APNG = { x: 975, y: 435 };
+
+// Per-wheel nudge offsets (canvas px), controlled individually
+let rear  = { dx: 27, dy: 0 };   // front wheel nudge (arrow keys)
+let front = { dx: 54, dy: 0 };  // rear wheel nudge (IJKL)
+
+const ROADS = [
+  { name: 'top',    y: 141 },
+  { name: 'mid',    y: 368 },
+  { name: 'bottom', y: 638 },
+];
+let activeRoad = ROADS[1];
+let yOffset = 0;
+let wheelAngle = 0;
+const dAngle = CAR_SPEED / WHEEL_R_CANVAS;
+
+const canvas    = document.getElementById('c');
+const ctx       = canvas.getContext('2d');
+const carImg    = document.getElementById('car');
+const bgImg     = document.getElementById('bg');
+const rearImg   = document.getElementById('wheelRear');
+const frontImg  = document.getElementById('wheelFront');
+
+let carCX = -DRAW_W / 2;
+
+function getCarDrawY() {
+  return activeRoad.y - CAR_BOTTOM_SCALED + yOffset;
+}
+
+function wheelCanvasX(apngX) {
+  return carCX + DRAW_W / 2 - apngX * CAR_SCALE;
+}
+
+function drawWheel(img, cx, cy, angle) {
+  if (!img.complete || img.naturalWidth === 0) return;
+  const r = WHEEL_R_CANVAS;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(angle);
+  ctx.drawImage(img, -r, -r, r * 2, r * 2);
+  ctx.restore();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+
+  if (bgImg.complete && bgImg.naturalWidth > 0)
+    ctx.drawImage(bgImg, 0, 0, CANVAS_W, CANVAS_H);
+
+  if (carImg.complete && carImg.naturalWidth > 0) {
+    const drawY = getCarDrawY();
+
+    ctx.save();
+    ctx.translate(carCX, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(carImg, -DRAW_W / 2, drawY, DRAW_W, DRAW_H);
+    ctx.restore();
+
+    const baseWheelY = drawY + BASE_REAR_APNG.y * CAR_SCALE;
+
+    drawWheel(frontImg,
+      wheelCanvasX(BASE_REAR_APNG.x)  + rear.dx,
+      baseWheelY                        + rear.dy,
+      wheelAngle);
+
+    drawWheel(rearImg,
+      wheelCanvasX(BASE_FRONT_APNG.x) + front.dx,
+      baseWheelY                       + front.dy,
+      wheelAngle);
+  }
+
+  document.getElementById('carX').textContent = Math.round(carCX);
+}
+
+function tick() {
+  carCX += CAR_SPEED;
+  wheelAngle += dAngle;
+  if (carCX > CANVAS_W + DRAW_W / 2) carCX = -DRAW_W / 2;
+  draw();
+  requestAnimationFrame(tick);
+}
+
+function restart() { carCX = -DRAW_W / 2; }
+function start()   { tick(); }
+
+bgImg.onload  = () => { if (carImg.complete) start(); };
+carImg.onload = () => { if (bgImg.complete)  start(); };
+if (bgImg.complete && bgImg.naturalWidth > 0 && carImg.complete && carImg.naturalWidth > 0) start();
+
+const STEP = 3;
+window.addEventListener('keydown', e => {
+  if (e.key === 'r' || e.key === 'R') { restart(); return; }
+  if (['1','2','3'].includes(e.key)) {
+    activeRoad = ROADS[parseInt(e.key) - 1];
+    document.getElementById('roadLabel').textContent = `${activeRoad.name} (${activeRoad.y})`;
+    restart(); return;
+  }
+  if (e.key === '+' || e.key === '=') { yOffset += 5; document.getElementById('yOff').textContent = yOffset; return; }
+  if (e.key === '-')                   { yOffset -= 5; document.getElementById('yOff').textContent = yOffset; return; }
+
+  // Rear wheel — Arrow keys
+  if (e.key === 'ArrowUp')    rear.dy  -= STEP;
+  if (e.key === 'ArrowDown')  rear.dy  += STEP;
+  if (e.key === 'ArrowLeft')  rear.dx  -= STEP;
+  if (e.key === 'ArrowRight') rear.dx  += STEP;
+  document.getElementById('rdx').textContent = rear.dx;
+  document.getElementById('rdy').textContent = rear.dy;
+
+  // Front wheel — IJKL
+  if (e.key === 'i' || e.key === 'I') front.dy -= STEP;
+  if (e.key === 'k' || e.key === 'K') front.dy += STEP;
+  if (e.key === 'j' || e.key === 'J') front.dx -= STEP;
+  if (e.key === 'l' || e.key === 'L') front.dx += STEP;
+  document.getElementById('fdx').textContent = front.dx;
+  document.getElementById('fdy').textContent = front.dy;
+
+  // Prevent page scroll from arrows
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+});
+</script>
+</body>
+</html>

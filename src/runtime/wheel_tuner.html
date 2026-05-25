@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Wheel Position Tuner</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #111; display: flex; flex-direction: column; align-items: center; padding: 10px; font-family: monospace; }
+    canvas { border: 1px solid #444; cursor: crosshair; }
+    #panel {
+      width: 1280px; background: #1a1a1a; color: #eee;
+      padding: 10px 16px; display: flex; gap: 30px; align-items: center;
+      font-size: 13px; border: 1px solid #333; border-top: none;
+    }
+    .coords { background: #000; padding: 6px 12px; border-radius: 4px; color: #0f0; font-size: 14px; letter-spacing: 1px; }
+    .active { color: #ff0; font-weight: bold; }
+    kbd { background: #333; border: 1px solid #555; border-radius: 3px; padding: 1px 5px; font-size: 12px; }
+    #output { background: #000; color: #0f0; padding: 8px 14px; border-radius: 4px; font-size: 13px; white-space: pre; }
+  </style>
+</head>
+<body>
+<canvas id="c" width="1280" height="955"></canvas>
+<div id="panel">
+  <div>
+    <span id="activeLabel" class="active">FRONT</span> selected &nbsp;
+    <kbd>Tab</kbd> switch &nbsp;
+    <kbd>←→↑↓</kbd> move &nbsp;
+    <kbd>Shift+9</kbd> grow radius &nbsp;
+    <kbd>Shift+0</kbd> shrink radius &nbsp;
+    <kbd>Shift+arrows</kbd> fast move &nbsp;
+    <kbd>S</kbd> save coords
+  </div>
+  <div class="coords" id="frontCoords">FRONT: cx=432 cy=525 r=108</div>
+  <div class="coords" id="rearCoords">REAR: cx=1085 cy=600 r=118</div>
+  <div id="output">Press S to output final JSON</div>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+const wheels = {
+  front: { cx: 432, cy: 525, r: 108, color: '#00ff00', label: 'FRONT' },
+  rear:  { cx: 1085, cy: 600, r: 118, color: '#ff8800', label: 'REAR'  },
+};
+
+let selected = 'front';
+let bodyImg = new Image();
+let wheelImg = new Image();
+let loaded = 0;
+
+function onLoad() {
+  loaded++;
+  if (loaded === 2) draw();
+}
+
+bodyImg.onload = onLoad;
+wheelImg.onload = onLoad;
+bodyImg.src = '../animations/car2/body.jpg?' + Date.now();
+wheelImg.src = '../animations/car2/wheel.jpg?' + Date.now();
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Car body
+  ctx.drawImage(bodyImg, 0, 0, 1280, 955);
+
+  // Draw each wheel
+  for (const [key, w] of Object.entries(wheels)) {
+    const isSelected = key === selected;
+
+    // Clip wheel image to circle
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(w.cx, w.cy, w.r, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(wheelImg, w.cx - w.r, w.cy - w.r, w.r * 2, w.r * 2);
+    ctx.restore();
+
+    // Center dot only (no outline ring)
+    ctx.beginPath();
+    ctx.arc(w.cx, w.cy, 5, 0, Math.PI * 2);
+    ctx.fillStyle = isSelected ? '#ff0000' : '#ff000077';
+    ctx.fill();
+
+    // Label
+    ctx.fillStyle = isSelected ? w.color : w.color + '88';
+    ctx.font = `bold ${isSelected ? 14 : 12}px monospace`;
+    ctx.fillText(`${w.label}: cx=${w.cx} cy=${w.cy} r=${w.r}`, w.cx - w.r, w.cy - w.r - 8);
+
+    // Wheel bottom line (road contact)
+    const by = w.cy + w.r;
+    ctx.beginPath();
+    ctx.moveTo(0, by);
+    ctx.lineTo(1280, by);
+    ctx.strokeStyle = isSelected ? w.color + '55' : '#44444444';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([6, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = isSelected ? w.color : w.color + '77';
+    ctx.font = '11px monospace';
+    ctx.fillText(`bottom=${by}`, 4, by - 3);
+  }
+}
+
+function updatePanel() {
+  const f = wheels.front, r = wheels.rear;
+  document.getElementById('frontCoords').textContent =
+    `FRONT: cx=${f.cx} cy=${f.cy} r=${f.r}`;
+  document.getElementById('rearCoords').textContent =
+    `REAR:  cx=${r.cx} cy=${r.cy} r=${r.r}`;
+  document.getElementById('activeLabel').textContent = wheels[selected].label;
+}
+
+window.addEventListener('keydown', e => {
+  const w = wheels[selected];
+  const step = e.shiftKey ? 10 : 1;
+
+  switch (e.key) {
+    case 'Tab':
+      e.preventDefault();
+      selected = selected === 'front' ? 'rear' : 'front';
+      break;
+    case 'ArrowLeft':  e.preventDefault(); w.cx -= step; break;
+    case 'ArrowRight': e.preventDefault(); w.cx += step; break;
+    case 'ArrowUp':    e.preventDefault(); w.cy -= step; break;
+    case 'ArrowDown':  e.preventDefault(); w.cy += step; break;
+    case '(': w.r = Math.max(20, w.r - 1); break;   // Shift+9
+    case ')': w.r += 1; break;                       // Shift+0
+    case 's': case 'S':
+      const f = wheels.front, r = wheels.rear;
+      const json = JSON.stringify({
+        source_width: 1280, source_height: 955,
+        wheel_geometry: {
+          front_wheel: { cx: f.cx, cy: f.cy, r: f.r },
+          rear_wheel:  { cx: r.cx, cy: r.cy, r: r.r },
+        },
+        wheel_bottom_y: f.cy + f.r
+      }, null, 2);
+      document.getElementById('output').textContent = json;
+      console.log(json);
+      break;
+    default: return;
+  }
+
+  updatePanel();
+  draw();
+});
+
+// Click to select nearest wheel
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const mx = (e.clientX - rect.left) * scaleX;
+  const my = (e.clientY - rect.top)  * scaleY;
+
+  let nearest = null, nearDist = Infinity;
+  for (const [key, w] of Object.entries(wheels)) {
+    const d = Math.hypot(mx - w.cx, my - w.cy);
+    if (d < nearDist) { nearDist = d; nearest = key; }
+  }
+  if (nearest) { selected = nearest; updatePanel(); draw(); }
+});
+</script>
+</body>
+</html>

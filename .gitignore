@@ -1,0 +1,49 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+
+# Generated runtime data
+data/scans/
+tmp/
+
+# Backup files
+*.sam2_backup
+*.bak
+
+# After Effects
+Adobe After Effects Auto-Save/
+*.aep.bak
+
+# Large source media and generated video
+*.mov
+*.mp4
+*.webm
+*.apng
+*.aep
+*.gif
+*.psd
+
+# Animation frame sequences (generated, large)
+src/animations/ram_frames/
+src/animations/ram_lineart/
+src/animations/frames/
+
+# Large vendor directories
+vendor/
+src/Ebsynth/
+src/ebsynth_projects/
+
+# Scratch / debug images
+src/runtime/_frame*.png
+src/runtime/_wheel*.png
+src/runtime/car_move_colored_debug_scan.png
+tmp_*.jpg
+tmp_*.png
+
+# OS
+.DS_Store
+Thumbs.db

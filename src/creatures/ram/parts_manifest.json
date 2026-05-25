@@ -1,0 +1,79 @@
+{
+  "imageWidth": 1344,
+  "imageHeight": 768,
+  "creature": "ram",
+  "parts": {
+    "body": {
+      "z": 0,
+      "pivot": [
+        537,
+        384
+      ],
+      "parent": null,
+      "file": "parts/body.png"
+    },
+    "neck": {
+      "z": 1,
+      "pivot": [
+        806,
+        360
+      ],
+      "parent": "body",
+      "file": "parts/neck.png"
+    },
+    "head_horns": {
+      "z": 2,
+      "pivot": [
+        819,
+        215
+      ],
+      "parent": "neck",
+      "file": "parts/head_horns.png"
+    },
+    "tail": {
+      "z": 1,
+      "pivot": [
+        403,
+        330
+      ],
+      "parent": "body",
+      "file": "parts/tail.png"
+    },
+    "leg_FR": {
+      "z": 3,
+      "pivot": [
+        792,
+        560
+      ],
+      "parent": "body",
+      "file": "parts/leg_FR.png"
+    },
+    "leg_FL": {
+      "z": -1,
+      "pivot": [
+        737,
+        560
+      ],
+      "parent": "body",
+      "file": "parts/leg_FL.png"
+    },
+    "leg_BR": {
+      "z": 3,
+      "pivot": [
+        466,
+        560
+      ],
+      "parent": "body",
+      "file": "parts/leg_BR.png"
+    },
+    "leg_BL": {
+      "z": -1,
+      "pivot": [
+        368,
+        560
+      ],
+      "parent": "body",
+      "file": "parts/leg_BL.png"
+    }
+  }
+}

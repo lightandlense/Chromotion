@@ -33,6 +33,7 @@ LATEST_SCAN_FILE = SCANS_DIR / "latest_scan_id.txt"
 
 SCAN_RECTIFY = PROJECT_ROOT / "src" / "preprocess" / "scan_rectify.py"
 SCAN_SLICE = PROJECT_ROOT / "src" / "preprocess" / "scan_slice.py"
+MASK_CAR2_SCAN = PROJECT_ROOT / "src" / "offline" / "mask_car2_scan.py"
 
 SCANS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -154,6 +155,14 @@ class KioskHandler(http.server.SimpleHTTPRequestHandler):
           4. Write latest_scan_id.txt
           5. Return {status: 'ok', scan_id: ...}
         """
+        try:
+            self._handle_post_scan_inner()
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
+            json_response(self, {"status": "error", "message": str(exc)}, 500)
+
+    def _handle_post_scan_inner(self):
         content_length = int(self.headers.get("Content-Length", 0))
         if content_length == 0:
             json_response(self, {"status": "error", "message": "No image data received."}, 400)
@@ -204,6 +213,20 @@ class KioskHandler(http.server.SimpleHTTPRequestHandler):
             text=True,
         )
         # scan_slice.py always exits 0 — handles fallback internally
+
+        # Step 3: Car2 body — resize scan to HTML coordinate space (1280x955), apply masking
+        if MASK_CAR2_SCAN.exists():
+            car2_body_path = scan_dir / "car2_body.png"
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(MASK_CAR2_SCAN),
+                    "--scan", str(rectified_path),
+                    "--output", str(car2_body_path),
+                ],
+                capture_output=True,
+                text=True,
+            )
 
         # Write latest scan ID for GET /api/status
         LATEST_SCAN_FILE.write_text(scan_id)

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Fish Kiosk Test — Rope Deformation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    canvas { display: block; }
+    #debug {
+      position: fixed; top: 10px; left: 10px;
+      background: rgba(0,0,0,0.7); color: #fff;
+      font: 13px monospace; padding: 8px 12px; border-radius: 4px; z-index: 100;
+    }
+  </style>
+</head>
+<body>
+
+<div id="debug">
+  Fish X: <span id="fishX">—</span> &nbsp;|&nbsp;
+  Speed: <span id="speedVal">2</span>px/f &nbsp;|&nbsp;
+  Keys: +/- speed &nbsp; W wiggle &nbsp; G guides &nbsp; R restart &nbsp; 1/2/3 depth
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/pixi.js@7/dist/pixi.min.js"></script>
+<script>
+const CANVAS_W = 1280;
+const CANVAS_H = 720;
+
+// ── Tunables ─────────────────────────────────────────────────────────────────
+let FISH_SPEED   = 2;       // px/frame, left-to-right (fish faces left, swims left)
+const FISH_SCALE = 0.55;    // scale applied to 800px-wide source body
+
+// Rope deformation
+const ROPE_SEGMENTS = 12;   // number of spine control points
+const BODY_W_SRC    = 800;  // source body texture width
+const BODY_H_SRC    = 200;  // source body texture height
+
+// Swim wave — travelling sine along the spine
+const WAVE_AMPLITUDE = 18;  // px (screen space), how far spine bends
+const WAVE_FREQUENCY = 0.55; // wavelengths across the body length
+let   WAVE_ENABLED   = true;
+
+// Road Y positions (where the fish center swims)
+const DEPTHS = [
+  { name: 'surface', y: 180 },
+  { name: 'mid',     y: 360 },
+  { name: 'deep',    y: 560 },
+];
+let ACTIVE_DEPTH = { ...DEPTHS[1] };
+
+const app = new PIXI.Application({
+  width:  CANVAS_W,
+  height: CANVAS_H,
+  backgroundColor: 0x006994,
+  resolution: window.devicePixelRatio || 1,
+  autoDensity: true,
+});
+document.body.appendChild(app.view);
+
+// ── Underwater background ─────────────────────────────────────────────────────
+// Gradient from dark blue at bottom to lighter at surface
+const bgGfx = new PIXI.Graphics();
+for (let y = 0; y < CANVAS_H; y++) {
+  const t = y / CANVAS_H;
+  const r = Math.round(0   * (1 - t) + 0   * t);
+  const g = Math.round(105 * (1 - t) + 60  * t);
+  const b = Math.round(148 * (1 - t) + 100 * t);
+  bgGfx.lineStyle(1, (r << 16) | (g << 8) | b, 1);
+  bgGfx.moveTo(0, y);
+  bgGfx.lineTo(CANVAS_W, y);
+}
+app.stage.addChild(bgGfx);
+
+// Caustic light rays (static decoration)
+const rayGfx = new PIXI.Graphics();
+for (let i = 0; i < 8; i++) {
+  const x = 80 + i * 160;
+  rayGfx.lineStyle(30 + Math.random() * 20, 0x40b0ff, 0.06);
+  rayGfx.moveTo(x, 0);
+  rayGfx.lineTo(x + 40, CANVAS_H);
+}
+app.stage.addChild(rayGfx);
+
+// ── Depth guides ──────────────────────────────────────────────────────────────
+const guideLayer = new PIXI.Graphics();
+app.stage.addChild(guideLayer);
+let guidesVisible = false;
+
+function drawGuides() {
+  guideLayer.clear();
+  if (!guidesVisible) return;
+  DEPTHS.forEach(d => {
+    guideLayer.lineStyle(1, 0xff0000, 0.6);
+    guideLayer.moveTo(0, d.y);
+    guideLayer.lineTo(CANVAS_W, d.y);
+  });
+}
+drawGuides();
+
+// ── Fish container ────────────────────────────────────────────────────────────
+const fishGroup = new PIXI.Container();
+app.stage.addChild(fishGroup);
+
+// Fish faces LEFT — travels right-to-left so front leads.
+// The body rope runs left (head) to right (tail-join) in source coords,
+// so we DON'T flip the container — instead the fish enters from the right.
+
+const bodyW = BODY_W_SRC * FISH_SCALE;   // 440px rendered
+const bodyH = BODY_H_SRC * FISH_SCALE;   // 110px rendered
+
+let ropePoints   = [];
+let rope         = null;
+let tailSprite   = null;
+let dorsalSprite = null;
+let pectoralSprite = null;
+let outlineRope  = null;
+let initialized  = false;
+let baseY        = ACTIVE_DEPTH.y;
+let t            = 0;
+
+function setDepth(depth) {
+  ACTIVE_DEPTH = { ...depth };
+  baseY = depth.y;
+  document.getElementById('fishX') && document.getElementById('fishX');
+}
+
+function spawnFish() {
+  // Fish faces left: front (head) is at left of texture.
+  // Travels right-to-left → enter from right edge.
+  fishGroup.x = CANVAS_W + bodyW + 200;
+  fishGroup.y = baseY;
+}
+
+// Build the rope points along the spine
+function buildRopePoints() {
+  const pts = [];
+  for (let i = 0; i < ROPE_SEGMENTS; i++) {
+    const x = (i / (ROPE_SEGMENTS - 1)) * bodyW;
+    pts.push(new PIXI.Point(x, 0));
+  }
+  return pts;
+}
+
+// ── Load textures ─────────────────────────────────────────────────────────────
+(async () => {
+  const v = Date.now();
+  const base = '../animations/fish/';
+  const [bodyTex, outlineTex, tailTex, dorsalTex, pectoralTex] = await Promise.all([
+    PIXI.Assets.load(`${base}body_placeholder.png?v=${v}`),
+    PIXI.Assets.load(`${base}outline_placeholder.png?v=${v}`),
+    PIXI.Assets.load(`${base}tail_placeholder.png?v=${v}`),
+    PIXI.Assets.load(`${base}dorsal_placeholder.png?v=${v}`),
+    PIXI.Assets.load(`${base}pectoral_placeholder.png?v=${v}`),
+  ]);
+
+  // Rope points define the fish spine
+  ropePoints = buildRopePoints();
+
+  // Layer 1: colored body rope
+  rope = new PIXI.SimpleRope(bodyTex, ropePoints);
+  rope.scale.set(1);
+  fishGroup.addChild(rope);
+
+  // Layer 2: tail fin — pivot at left edge center (where it meets body)
+  tailSprite = new PIXI.Sprite(tailTex);
+  tailSprite.anchor.set(0, 0.5);
+  tailSprite.scale.set(FISH_SCALE * 1.1);
+  tailSprite.x = bodyW;
+  tailSprite.y = 0;
+  fishGroup.addChild(tailSprite);
+
+  // Layer 3: dorsal fin — pivot at bottom center, sits on top of body
+  dorsalSprite = new PIXI.Sprite(dorsalTex);
+  dorsalSprite.anchor.set(0.5, 1.0);
+  dorsalSprite.scale.set(FISH_SCALE);
+  dorsalSprite.x = bodyW * 0.45;  // 45% from head = middle-back area
+  dorsalSprite.y = -bodyH * 0.4;
+  fishGroup.addChild(dorsalSprite);
+
+  // Layer 4: pectoral fin
+  pectoralSprite = new PIXI.Sprite(pectoralTex);
+  pectoralSprite.anchor.set(0, 0.5);
+  pectoralSprite.scale.set(FISH_SCALE * 0.9);
+  pectoralSprite.x = bodyW * 0.28;
+  pectoralSprite.y = bodyH * 0.15;
+  fishGroup.addChild(pectoralSprite);
+
+  // Layer 5: outline rope (same points as body)
+  const outlinePoints = ropePoints.map(p => new PIXI.Point(p.x, p.y));
+  outlineRope = new PIXI.SimpleRope(outlineTex, outlinePoints);
+  fishGroup.addChild(outlineRope);
+
+  setDepth(ACTIVE_DEPTH);
+  spawnFish();
+  initialized = true;
+})();
+
+// ── Animation loop ─────────────────────────────────────────────────────────────
+app.ticker.add(() => {
+  if (!initialized) return;
+  t += 1;
+
+  // Translate right-to-left
+  fishGroup.x -= FISH_SPEED;
+  document.getElementById('fishX').textContent = Math.round(fishGroup.x);
+
+  // Gentle vertical drift (bobbing)
+  fishGroup.y = baseY + Math.sin(t * 0.025) * 8;
+
+  // Wrap: off left → re-enter from right
+  if (fishGroup.x < -(bodyW + 250)) {
+    fishGroup.x = CANVAS_W + bodyW + 200;
+  }
+
+  if (!WAVE_ENABLED) return;
+
+  // Travelling sine wave along the spine
+  // Head (i=0) barely moves; tail end (i=max) has full amplitude.
+  // The wave travels in the direction of motion (right-to-left = positive phase advance).
+  const waveSpeed = 0.08;  // radians per frame (phase advance per tick)
+  const phase = t * waveSpeed;
+
+  for (let i = 0; i < ROPE_SEGMENTS; i++) {
+    const progress = i / (ROPE_SEGMENTS - 1);  // 0=head, 1=tail-end
+    // Amplitude envelope: zero at head, full at tail (realistic fish propulsion)
+    const envelope = progress * progress;
+    const angle = phase - progress * Math.PI * 2 * WAVE_FREQUENCY;
+    ropePoints[i].y = Math.sin(angle) * WAVE_AMPLITUDE * envelope;
+    // Mirror to outline rope
+    outlineRope.points[i].y = ropePoints[i].y;
+  }
+
+  // Tail fin rotates with the wave at the tail end
+  if (tailSprite) {
+    const tailAngle = Math.sin(phase - Math.PI * 2 * WAVE_FREQUENCY) * 0.45;
+    tailSprite.rotation = tailAngle;
+    tailSprite.x = bodyW + ropePoints[ROPE_SEGMENTS - 1].y * 0.3;
+    tailSprite.y = ropePoints[ROPE_SEGMENTS - 1].y;
+  }
+
+  // Dorsal fin slight oscillation (follows mid-spine)
+  if (dorsalSprite) {
+    const midI = Math.floor(ROPE_SEGMENTS * 0.45);
+    dorsalSprite.y = ropePoints[midI].y - bodyH * 0.4;
+    dorsalSprite.rotation = ropePoints[midI].y * 0.008;
+  }
+
+  // Pectoral fin oscillates like a rowing motion
+  if (pectoralSprite) {
+    pectoralSprite.rotation = Math.sin(t * 0.12) * 0.25;
+  }
+});
+
+// ── Keyboard controls ──────────────────────────────────────────────────────────
+window.addEventListener('keydown', e => {
+  if (e.key === 'g' || e.key === 'G') {
+    guidesVisible = !guidesVisible;
+    drawGuides();
+  }
+  if (e.key === 'r' || e.key === 'R') {
+    if (initialized) spawnFish();
+  }
+  if (e.key === 'w' || e.key === 'W') {
+    WAVE_ENABLED = !WAVE_ENABLED;
+    if (!WAVE_ENABLED) ropePoints.forEach(p => p.y = 0);
+  }
+  if (e.key === '+' || e.key === '=') {
+    FISH_SPEED = Math.min(FISH_SPEED + 1, 10);
+    document.getElementById('speedVal').textContent = FISH_SPEED;
+  }
+  if (e.key === '-') {
+    FISH_SPEED = Math.max(FISH_SPEED - 1, 1);
+    document.getElementById('speedVal').textContent = FISH_SPEED;
+  }
+  if (['1', '2', '3'].includes(e.key)) {
+    setDepth(DEPTHS[parseInt(e.key) - 1]);
+    if (initialized) spawnFish();
+  }
+});
+</script>
+</body>
+</html>
